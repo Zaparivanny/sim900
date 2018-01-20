@@ -1,0 +1,7 @@
+#ifndef EXAMPLE_CONFIG_H
+#define EXAMPLE_CONFIG_H
+
+
+#define PHONE_NUMBER "+79643205033"
+
+#endif
