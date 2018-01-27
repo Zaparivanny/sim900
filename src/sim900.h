@@ -19,7 +19,7 @@
 //AT+CIFSR /**Get the local IP address. Some people say that this step is not required, but if I do not issue this, it was not working for my case. So I made this mandatory, no harm.**/
 
 //+RECEIVE,1,53: - if AT+CIPMUX = 1
-
+// validate email http://www.ex-parrot.com/~pdw/Mail-RFC822-Address.html
 
 
 typedef enum
@@ -118,6 +118,15 @@ typedef enum
     SIM_TCP_CLOSED,
 }sim_con_status_t;
 
+typedef enum
+{
+    SIM_SMS_REC_UNREAD = 0,
+    SIM_SMS_REC_READ,
+    SIM_SMS_STO_UNSENT,
+    SIM_SMS_STO_SENT,
+    SIM_SMS_ALL,
+}sim_sms_status_t;
+
 typedef struct
 {
     uint8_t addr0;
@@ -133,6 +142,13 @@ typedef struct
     void *user_pointer;
 }sim_reply_t;
 
+typedef struct
+{
+    sim_sms_status_t status;
+    char number[16];
+    
+}sim_sms_t;
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -144,13 +160,11 @@ uint8_t simx_is_receive();
 void simx_callback_send(uint8_t *data, uint16_t length);
 void simx_callback_tcp_msg(sim_con_status_t con_status, uint8_t n);
 void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n);
+void simx_callback_sms_received(uint16_t number);
 
 void simx_test(sim_reply_t *reply);
 void simx_pin_is_required(sim_reply_t *reply); // AT+CPIN?
 void simx_network_registration(sim_reply_t *reply);
-
-void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode);
-void simx_send_sms(sim_reply_t *reply, const char* number, const char* msg);
 
 void simx_sim_inserted_status(sim_reply_t *reply);
 
@@ -170,6 +184,11 @@ void simx_tcp_connect(sim_reply_t *reply, sim_tcp_mode_t tcp_mode, char *address
 void simx_tcp_send_data(sim_reply_t *reply, uint8_t *data, uint16_t length, int n);
 void simx_tcp_close(sim_reply_t *reply, int n);
 void simx_tcp_head_enable(sim_reply_t *reply, uint8_t is_enable);
+
+/********SMS************/
+void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode);
+void simx_send_sms(sim_reply_t *reply, const char* number, const char* msg);
+//void simx_list_sms(sim_reply_t *reply, );
 
 sim_pin_status_t sim_pin_required();
 sim_reg_network_t sim_network_registration();

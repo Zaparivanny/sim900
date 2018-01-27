@@ -11,6 +11,12 @@ uint8_t g_con_n = -1;
 char* g_tcp_data;
 uint16_t g_tcp_length;
 uint8_t g_tcp_con;
+uint16_t g_sms_number;
+
+void simx_callback_sms_received(uint16_t number)
+{
+    g_sms_number = number;
+}
 
 void simx_callback_send(uint8_t *data, uint16_t length)
 {
@@ -539,5 +545,21 @@ TEST(AutoTestSim900MSG, SIM_TCP_CALLBACK)
     EXPECT_EQ(reply.status, SIM300_OK);
     
     /***********************************************/
+    
+}
+
+TEST(AutoTestSim900MSG, SIM_SMS_CALLBACK)
+{
+    sim_reply_t reply;
+    simx_test_send("\r\n+CMTI: \"SM\",4\r\n");
+    EXPECT_EQ(g_sms_number, 4);
+    /**********************************************/
+    simx_sms_mode(&reply, SIM_SMS_TEXT);
+    EXPECT_EQ(g_length, strlen("AT+CMGF=1\r\n"));
+    EXPECT_STREQ(g_data, "AT+CMGF=1\r\n");
+
+    simx_test_send("\r\nOK\r\n");
+    EXPECT_EQ(reply.status, SIM300_OK);
+    /**********************************************/
     
 }

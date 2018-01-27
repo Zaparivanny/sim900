@@ -25,6 +25,9 @@ void _simx_is_attach_to_GPRS_resp(struct sim300_context_t *context, uint8_t *buf
 void _simx_current_connection_status_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void _simx_signal_quality_report_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 
+void _simx_notification_receive(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
+void _simx_notification_sms(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
+
 void simx_receive_tcp(struct sim300_context_t *context, uint8_t byte);
 void simx_receive_msg(struct sim300_context_t *context, uint8_t byte);
 
@@ -81,7 +84,14 @@ typedef struct
     uint8_t len;
     fcmd_frame f_frm;
     fcmd_frame f_msg;
-}simx_cmd_spect_t;
+}simx_cmd_spec_t;
+
+typedef struct
+{
+    char *cmdstr;
+    uint8_t len;
+    fcmd_frame f;
+}simx_notif_spec_t;
 
 typedef struct sim300_context_t
 {
@@ -102,7 +112,7 @@ typedef struct sim300_context_t
 }sim300_context_t;
 
 #define CMD_STR(a) .cmdstr = a, .len = sizeof(a) - 1
-simx_cmd_spect_t simx_cmd_spec[] = 
+simx_cmd_spec_t simx_cmd_spec[] = 
     {{.cmd = AT_CPINR,     CMD_STR("CPIN?"),     .f_frm = simx_rcv_rframe , .f_msg = _simx_pin_is_required_resp},
      {.cmd = AT_CREG,      CMD_STR("CREG?"),     .f_frm = simx_rcv_rframe , .f_msg = _simx_network_registration_resp},
      {.cmd = AT_CMGF,      CMD_STR("CMGF="),     .f_frm = simx_rcv_dframe , .f_msg = NULL},
@@ -122,6 +132,9 @@ simx_cmd_spect_t simx_cmd_spec[] =
      {.cmd = AT_CIPCLOSE,  CMD_STR("CIPCLOSE="), .f_frm = simx_rcv_dframe,  .f_msg = NULL},
      {.cmd = AT_CIPHEAD,   CMD_STR("CIPHEAD="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL}};
 
+simx_notif_spec_t simx_notif_spec[] = 
+    {{CMD_STR("+RECEIVE,"), .f = _simx_notification_receive},
+     {CMD_STR("+CMTI:"),    .f = _simx_notification_sms}};
 
 sim300_context_t g_context = {.pin_is_required = SIM_PIN_UNKNOW, .is_receive = 1, .cmd = NO_AT, .mux = 0};
 
@@ -212,12 +225,12 @@ void simx_rcv_rframe(sim300_context_t *context, uint8_t *buffer, uint16_t length
 void simx_rcv_dframe(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
     
-    printf("%i [", length);
+    /*printf("%i [", length);
     for(int i = 0; i < length; i++)
     {
         printf("%x", buffer[i]);
     }
-    printf("]\r\n");
+    printf("]\r\n");*/
     switch(context->state)
     {
     case AT_CMD_ST_RN:
@@ -457,6 +470,40 @@ void simx_rcv_sdframe(struct sim300_context_t *context, uint8_t *buffer, uint16_
     }
 }
 
+void _simx_notification_receive(sim300_context_t *context, uint8_t *buffer, uint16_t length)
+{
+    if(context->mux && length > 11)
+    {
+        int size, desc;
+        uint8_t n = sscanf(buffer + 9, "%i,%i", &desc, &size);
+        if(n == 2)
+        {
+            g_receive_ncon = desc;
+            g_receive_len = size;
+            fsimx_receive = simx_receive_tcp;
+        }
+    }
+}
+
+void _simx_notification_sms(sim300_context_t *context, uint8_t *buffer, uint16_t length)
+{
+    //TODO ADD MEM TYPE
+    if(length > 10)
+    {
+        char mem[10] = {0};
+        int n;
+        uint8_t k = sscanf(buffer + 6, "%*[^\"]\"%[^\"]\",%d", mem, &n);
+        if(k == 2)
+        {
+            simx_callback_sms_received(n);
+        }
+        else
+        {
+            //TODO error frame
+        }
+    }
+}
+
 void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
     if(context->is_receive == 1)
@@ -466,17 +513,21 @@ void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t len
             uint8_t n = 0;
             uint16_t len = length;
             char *tmpbuff = buffer;
-            if(context->mux)
+            
+            for(int i = 0; i < sizeof(simx_notif_spec) / sizeof(simx_notif_spec[0]); i++)
             {
-                if(memcmp(buffer, "+RECEIVE,", 9) == 0)
+                if(memcmp(buffer, simx_notif_spec[i].cmdstr, simx_notif_spec[i].len) == 0)
                 {
-                    int size, desc;
-                    sscanf(buffer + 9, "%i,%i", &desc, &size);
-                    g_receive_ncon = desc;
-                    g_receive_len = size;
-                    fsimx_receive = simx_receive_tcp;
+                    if(simx_notif_spec[i].f)
+                    {
+                        simx_notif_spec[i].f(context, buffer, length);
+                    }
                     return;
                 }
+            }
+            
+            if(context->mux)
+            {
                 tmpbuff = buffer + 3;
                 n = buffer[0] - 0x30;
                 len -= 3;
@@ -698,19 +749,6 @@ void simx_network_registration(sim_reply_t *reply)
     sim300_send_at_cmd(&g_context, reply, AT_CREG);
 }
 
-void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode)
-{
-    //TODO assert mode
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGF, "%i", mode);
-}
-
-void simx_send_sms(sim_reply_t *reply, const char *number, const char* msg)
-{
-    //todo validate number
-    g_context.cmd_data = msg;
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGS, "\"%s\"", number);
-}
-
 void _simx_sim_inserted_status_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
     //printf("rec: %s %i", buffer, length);
@@ -915,6 +953,19 @@ void simx_tcp_head_enable(sim_reply_t *reply, uint8_t is_enable)
     g_context.reply->user_data = is_enable;
     fcmd_finished = _simx_tcp_head_enable_finished;
     sim300_send_at_cmd_vp(&g_context, reply, AT_CIPHEAD, "%i", is_enable);
+}
+
+void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode)
+{
+    //TODO assert mode
+    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGF, "%i", mode);
+}
+
+void simx_send_sms(sim_reply_t *reply, const char *number, const char* msg)
+{
+    //todo validate number
+    g_context.cmd_data = msg;
+    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGS, "\"%s\"", number);
 }
 
 sim_pin_status_t sim_pin_required()
