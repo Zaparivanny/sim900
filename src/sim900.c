@@ -613,7 +613,7 @@ void simx_receive_msg(sim300_context_t *context, uint8_t byte)
         if(memcmp(g_sim_rx_buffer, "+IPD,", 5) == 0)
         {
             int size;
-            sscanf(g_sim_rx_buffer + 5, "%i", size);
+            sscanf(g_sim_rx_buffer + 5, "%i", &size);
             g_receive_ncon = 0;
             g_receive_len = size;
             sim_cnt = 0;
