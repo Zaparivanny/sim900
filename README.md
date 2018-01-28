@@ -4,7 +4,7 @@
 # sim900 library
 
 
-## How to build this library
+## How to install this library
 
 ```sh
 git clone --recursive https://github.com/Zaparivanny/sim900.git
@@ -13,8 +13,8 @@ git clone --recursive https://github.com/Zaparivanny/sim900.git
 
 ## Supported commands
 
-| COMMAND  |  description |
-|----------|-------------:|
+| Command      |  Description                                          |
+|--------------|-------------------------------------------------------|
 | AT                                                                   |
 | AT+CPIN?     | Enter PIN                                             |
 | AT+CREG?     | Network Registration                                  |
@@ -34,6 +34,23 @@ git clone --recursive https://github.com/Zaparivanny/sim900.git
 | AT+CIPCLOSE= | Close tcp or udp connection                           |
 | AT+CIPHEAD=  | Add an ip head at the beginning of a package received |
 | AT+CSCS=     | Select TE Character Set                               |
+
+## Implementation
+
+You must implement 5 callback:
+
+```c
+void simx_callback_send(uint8_t *data, uint16_t length);
+void simx_callback_tcp_msg(sim_con_status_t con_status, uint8_t n);
+void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n);
+void simx_callback_sms_received(uint16_t number);
+void simx_callback_pdp_deact();
+```
+simx_callback_send - called when need to send data to uart  
+simx_callback_tcp_msg - called when receive a connection notification  
+simx_callback_tcp_data - called when TCPIP data came in  
+simx_callback_sms_received - called when the SMS came  
+simx_callback_pdp_deact - called when connection lost  
 
 ## Examples
 * Connect to gprs
