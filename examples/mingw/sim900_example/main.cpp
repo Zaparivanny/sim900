@@ -26,6 +26,16 @@ void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n)
     
 }
 
+void simx_callback_sms_received(uint16_t number)
+{
+    
+}
+
+void simx_callback_pdp_deact()
+{
+    
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
@@ -35,8 +45,10 @@ int main(int argc, char *argv[])
     worker = new Worker();
     worker->moveToThread(thread);
     thread->start();
-    QMetaObject::invokeMethod(worker, "send", Qt::DirectConnection);
+    
+    //QMetaObject::invokeMethod(worker, "send", Qt::DirectConnection);
     //QMetaObject::invokeMethod(worker, "send_sms", Qt::DirectConnection);
+    QMetaObject::invokeMethod(worker, "connect_to_gprs", Qt::DirectConnection);
     
     return a.exec();
 }

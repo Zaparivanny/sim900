@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QSerialPort>
 #include "example_config.h"
+#include <iostream>
 
 Worker::Worker(QObject *parent) : QObject(parent)
 {
@@ -53,6 +54,38 @@ void Worker::send_sms()
     simx_send_sms(&reply, PHONE_NUMBER, "test");
     simx_wait_reply();
     qDebug() << "[Worker::send2]" << reply.status;
+}
+
+void Worker::connect_to_gprs()
+{
+    sim_reply_t reply;
+    simx_is_attach_to_GPRS(&reply);
+    simx_wait_reply();
+    if(reply.status != SIM300_OK){return;}
+    
+    simx_deactivate_gprs_pdp(&reply);
+    simx_wait_reply();
+    if(reply.status != SIM300_SHUT_OK){return;}
+    
+    simx_current_connection_status(&reply);
+    simx_wait_reply();
+    if(reply.status != SIM300_OK){return;}
+    
+    simx_set_gprs_config(&reply, APN, APN_USER_NAME, APN_PASSWORD);
+    simx_wait_reply();
+    if(reply.status != SIM300_OK){return;}
+    
+    simx_bring_up_wireless_connection(&reply);
+    simx_wait_reply();
+    if(reply.status != SIM300_OK){return;}
+    
+    sim_ip_t ip;
+    simx_get_local_ip(&reply, &ip);
+    simx_wait_reply();
+    if(reply.status != SIM300_OK){return;}
+    std::cout << "IP:" << (int)ip.addr0 << "." << (int)ip.addr1 << "."
+                       << (int)ip.addr2 << "."<< (int)ip.addr3 << "." << std::endl;
+    
 }
 
 void Worker::pserialWrite(char *data, quint64 length)

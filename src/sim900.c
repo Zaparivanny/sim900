@@ -27,6 +27,7 @@ void _simx_signal_quality_report_resp(struct sim300_context_t *context, uint8_t 
 
 void _simx_notification_receive(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void _simx_notification_sms(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
+void _simx_notification_pdp_deact(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 
 void simx_receive_tcp(struct sim300_context_t *context, uint8_t byte);
 void simx_receive_msg(struct sim300_context_t *context, uint8_t byte);
@@ -75,6 +76,7 @@ typedef enum
     AT_CIPSEND,
     AT_CIPCLOSE,
     AT_CIPHEAD,
+    AT_CSCS,
 }simx_cmd_t;
 
 typedef struct
@@ -104,6 +106,7 @@ typedef struct sim300_context_t
     uint8_t mux;
     uint8_t ciphead;
     uint8_t cipshowtp;
+    sim_TE_chaster_t te_chaster;
     sim_pin_status_t pin_is_required;
     sim_reg_network_t network_reg;
     int8_t sim_is_insert;
@@ -130,11 +133,15 @@ simx_cmd_spec_t simx_cmd_spec[] =
      {.cmd = AT_CIPSTART,  CMD_STR("CIPSTART="), .f_frm = simx_rcv_dframe , .f_msg = NULL},
      {.cmd = AT_CIPSEND,   CMD_STR("CIPSEND="),  .f_frm = simx_rcv_sdframe, .f_msg = NULL},
      {.cmd = AT_CIPCLOSE,  CMD_STR("CIPCLOSE="), .f_frm = simx_rcv_dframe,  .f_msg = NULL},
-     {.cmd = AT_CIPHEAD,   CMD_STR("CIPHEAD="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL}};
+     {.cmd = AT_CIPHEAD,   CMD_STR("CIPHEAD="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_CSCS,      CMD_STR("CSCS="),     .f_frm = simx_rcv_dframe,  .f_msg = NULL}};
 
 simx_notif_spec_t simx_notif_spec[] = 
-    {{CMD_STR("+RECEIVE,"), .f = _simx_notification_receive},
-     {CMD_STR("+CMTI:"),    .f = _simx_notification_sms}};
+    {{CMD_STR("+RECEIVE,"),   .f = _simx_notification_receive},
+     {CMD_STR("+CMTI:"),      .f = _simx_notification_sms},
+     {CMD_STR("+PDP: DEACT"), .f = _simx_notification_pdp_deact}};
+
+static const char* te_chasters[] = {"GSM", "UCS2", "IRA", "HEX", "PCCP", "PCDN", "8859-1"};
 
 sim300_context_t g_context = {.pin_is_required = SIM_PIN_UNKNOW, .is_receive = 1, .cmd = NO_AT, .mux = 0};
 
@@ -504,6 +511,11 @@ void _simx_notification_sms(sim300_context_t *context, uint8_t *buffer, uint16_t
     }
 }
 
+void _simx_notification_pdp_deact(struct sim300_context_t *context, uint8_t *buffer, uint16_t length)
+{
+    simx_callback_pdp_deact();
+}
+
 void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
     if(context->is_receive == 1)
@@ -795,6 +807,18 @@ void simx_signal_quality_report(sim_reply_t *reply, uint8_t *lvl)
 {
     reply->user_pointer = lvl;
     sim300_send_at_cmd(&g_context, reply, AT_CSQ);
+}
+
+void _simx_set_TE_character_finished(sim300_context_t *context, uint8_t *buffer, uint16_t length)
+{
+    context->te_chaster = (sim_TE_chaster_t)context->reply->user_data;
+}
+
+void simx_set_TE_character(sim_reply_t *reply, sim_TE_chaster_t chaster)
+{
+    fcmd_finished = _simx_set_TE_character_finished;
+    reply->user_data = chaster;
+    sim300_send_at_cmd_vp(&g_context, reply, AT_CSCS, "\"%s\"", te_chasters[chaster]);
 }
 
 void _simx_is_attach_to_GPRS_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)

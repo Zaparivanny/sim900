@@ -12,6 +12,7 @@ char* g_tcp_data;
 uint16_t g_tcp_length;
 uint8_t g_tcp_con;
 uint16_t g_sms_number;
+uint8_t is_deact;
 
 void simx_callback_sms_received(uint16_t number)
 {
@@ -35,6 +36,11 @@ void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n)
     g_tcp_data = (char*)data;
     g_tcp_length = length;
     g_tcp_con = n;
+}
+
+void simx_callback_pdp_deact()
+{
+    is_deact = 1;
 }
 
 void simx_test_send(const char* msg)
@@ -445,6 +451,17 @@ TEST(AutoTestSim900, SIM_AT_CIPHEAD)
     //EXPECT_EQ(sim_cip_mux_mode(), 1);
 }
 
+TEST(AutoTestSim900, SIM_AT_CSCS)
+{
+    sim_reply_t reply;
+    
+    simx_set_TE_character(&reply, SIM_IRA);
+    EXPECT_EQ(strlen(g_data), strlen("AT+CSCS=\"IRA\"\r\n"));
+    EXPECT_EQ(g_length, strlen("AT+CSCS=\"IRA\"\r\n"));
+    simx_test_send("\r\nOK\r\n");
+    EXPECT_EQ(reply.status, SIM300_OK);
+}
+
 TEST(AutoTestSim900MSG, SIM_MSG_CALLBACK)
 {
     sim_reply_t reply;
@@ -562,4 +579,11 @@ TEST(AutoTestSim900MSG, SIM_SMS_CALLBACK)
     EXPECT_EQ(reply.status, SIM300_OK);
     /**********************************************/
     
+}
+
+TEST(AutoTestSim900MSG, SIM_PDP_CALLBACK)
+{
+    
+    simx_test_send("\r\n+PDP: DEACT\r\n");
+    EXPECT_EQ(is_deact, 1);
 }

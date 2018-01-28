@@ -2,6 +2,9 @@
 #define EXAMPLE_CONFIG_H
 
 
-#define PHONE_NUMBER "+79643205033"
+#define PHONE_NUMBER "+795422222222"
+#define APN "internet.mts.ru"
+#define APN_USER_NAME "mts"
+#define APN_PASSWORD "mts"
 
 #endif

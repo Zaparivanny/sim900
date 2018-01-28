@@ -127,6 +127,17 @@ typedef enum
     SIM_SMS_ALL,
 }sim_sms_status_t;
 
+typedef enum
+{
+    SIM_GSM = 0,
+    SIM_UCS2,
+    SIM_IRA,
+    SIM_HEX,
+    SIM_PCCP,
+    SIM_PCDN,
+    SIM_8859_1,
+}sim_TE_chaster_t;
+
 typedef struct
 {
     uint8_t addr0;
@@ -161,6 +172,7 @@ void simx_callback_send(uint8_t *data, uint16_t length);
 void simx_callback_tcp_msg(sim_con_status_t con_status, uint8_t n);
 void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n);
 void simx_callback_sms_received(uint16_t number);
+void simx_callback_pdp_deact();
 
 void simx_test(sim_reply_t *reply);
 void simx_pin_is_required(sim_reply_t *reply); // AT+CPIN?
@@ -169,6 +181,8 @@ void simx_network_registration(sim_reply_t *reply);
 void simx_sim_inserted_status(sim_reply_t *reply);
 
 void simx_signal_quality_report(sim_reply_t *reply, uint8_t *lvl);
+
+void simx_set_TE_character(sim_reply_t *reply, sim_TE_chaster_t chaster);
 
 /********GPRS************/
 void simx_is_attach_to_GPRS(sim_reply_t *reply);
