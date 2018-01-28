@@ -48,7 +48,8 @@ int main(int argc, char *argv[])
     
     //QMetaObject::invokeMethod(worker, "send", Qt::DirectConnection);
     //QMetaObject::invokeMethod(worker, "send_sms", Qt::DirectConnection);
-    QMetaObject::invokeMethod(worker, "connect_to_gprs", Qt::DirectConnection);
+    //QMetaObject::invokeMethod(worker, "connect_to_gprs", Qt::DirectConnection);
+    QMetaObject::invokeMethod(worker, "read_sms", Qt::DirectConnection);
     
     return a.exec();
 }

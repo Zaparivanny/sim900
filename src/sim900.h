@@ -156,8 +156,11 @@ typedef struct
 typedef struct
 {
     sim_sms_status_t status;
-    char number[16];
-    
+    char number[13];
+    char mt[17];
+    char date[22];
+    char *msg;
+    uint16_t msg_length;
 }sim_sms_t;
 
 #ifdef __cplusplus
@@ -202,6 +205,7 @@ void simx_tcp_head_enable(sim_reply_t *reply, uint8_t is_enable);
 /********SMS************/
 void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode);
 void simx_send_sms(sim_reply_t *reply, const char* number, const char* msg);
+void simx_read_sms(sim_reply_t *reply, sim_sms_t *sim_sms, uint16_t n);
 //void simx_list_sms(sim_reply_t *reply, );
 
 sim_pin_status_t sim_pin_required();

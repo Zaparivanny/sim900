@@ -23,6 +23,7 @@ public slots:
     void send();
     void send_sms();
     void connect_to_gprs();
+    void read_sms();
 };
 
 #endif // WORKER_H

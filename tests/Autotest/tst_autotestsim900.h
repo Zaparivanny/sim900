@@ -462,6 +462,50 @@ TEST(AutoTestSim900, SIM_AT_CSCS)
     EXPECT_EQ(reply.status, SIM300_OK);
 }
 
+
+TEST(AutoTestSim900, SIM_AT_CMGR)
+{
+    sim_reply_t reply;
+    sim_sms_t sms;
+    memset(&sms, 0, sizeof(sim_sms_t));
+    char buffer[200];
+    sms.msg = buffer;
+    sms.msg_length = 200;
+    simx_read_sms(&reply, &sms, 4);
+    EXPECT_EQ(g_length, strlen("AT+CMGR=4\r\n"));
+    EXPECT_STREQ(g_data, "AT+CMGR=4\r\n");
+    
+    simx_test_send("\r\n+CMGR: \"REC READ\",\"MTC\",\"\",\"18/01/22,19:07:20+12\"\r\n"
+                   "test message\r\n\r\nOK\r\n");
+    
+    simx_test_send("\r\nOK\r\n");
+    
+    EXPECT_STREQ(sms.number, "MTC");
+    EXPECT_STREQ(sms.date, "18/01/22,19:07:20+12");
+    EXPECT_STREQ(sms.msg, "test message");
+    
+    EXPECT_EQ(reply.status, SIM300_OK);
+    
+    memset(&sms, 0, sizeof(sim_sms_t));
+    sms.msg = buffer;
+    sms.msg_length = 200;
+    simx_read_sms(&reply, &sms, 4);
+    EXPECT_EQ(g_length, strlen("AT+CMGR=4\r\n"));
+    EXPECT_STREQ(g_data, "AT+CMGR=4\r\n");
+    
+    simx_test_send("\r\n+CMGR: \"REC READ\",\"MTC111111111111111\",\"\",\"18/01/22,19:07:20+12\"\r\n"
+                   "test message\r\n\r\nOK\r\n");
+    
+    simx_test_send("\r\nOK\r\n");
+    
+    EXPECT_STREQ(sms.number, "");
+    EXPECT_STREQ(sms.date, "18/01/22,19:07:20+12");
+    EXPECT_STREQ(sms.msg, "test message");
+    
+    EXPECT_EQ(reply.status, SIM300_OK);
+}
+
+
 TEST(AutoTestSim900MSG, SIM_MSG_CALLBACK)
 {
     sim_reply_t reply;

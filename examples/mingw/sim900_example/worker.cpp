@@ -87,6 +87,19 @@ void Worker::connect_to_gprs()
                        << (int)ip.addr2 << "."<< (int)ip.addr3 << "." << std::endl;
     
 }
+sim_sms_t sms;
+void Worker::read_sms()
+{
+    sim_reply_t reply;
+    
+    char buffer[200];
+    sms.msg = buffer;
+    sms.msg_length = 200;
+    simx_read_sms(&reply, &sms, 4);
+    simx_wait_reply();
+    if(reply.status != SIM300_OK){return;}
+    std::cout << "SMS:" << sms.msg;
+}
 
 void Worker::pserialWrite(char *data, quint64 length)
 {

@@ -18,8 +18,6 @@ git clone --recursive https://github.com/Zaparivanny/sim900.git
 | AT                                                                   |
 | AT+CPIN?     | Enter PIN                                             |
 | AT+CREG?     | Network Registration                                  |
-| AT+CMGF=     | Select SMS Message Format                             |
-| AT+CMGS=     | Send sms message                                      |
 | AT+CSMINS?   | Sim inserted status reporting                         |
 | AT+CGATT?    | Attach or detach from gprs service                    |
 | AT+CIPSHUT   | Deactivate gprs pdp context                           |
@@ -34,6 +32,9 @@ git clone --recursive https://github.com/Zaparivanny/sim900.git
 | AT+CIPCLOSE= | Close tcp or udp connection                           |
 | AT+CIPHEAD=  | Add an ip head at the beginning of a package received |
 | AT+CSCS=     | Select TE Character Set                               |
+| AT+CMGF=     | Select SMS Message Format                             |
+| AT+CMGS=     | Send SMS message                                      |
+| CMGR=        | Read SMS Message                                      |
 
 ## Implementation
 
@@ -90,5 +91,16 @@ simx_callback_pdp_deact - called when connection lost
     sim_reply_t reply;
     simx_send_sms(&reply, PHONE_NUMBER, "test");
     simx_wait_reply();
+```
+
+* Read SMS
+```cpp
+    sim_reply_t reply;
+    char buffer[200];
+    sms.msg = buffer;
+    sms.msg_length = 200;
+    simx_read_sms(&reply, &sms, 4);
     simx_wait_reply();
+    if(reply.status != SIM300_OK){return;}
+    std::cout << "SMS:" << sms.msg;
 ```

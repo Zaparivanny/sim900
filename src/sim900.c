@@ -24,6 +24,7 @@ void _simx_sim_inserted_status_resp(struct sim300_context_t *context, uint8_t *b
 void _simx_is_attach_to_GPRS_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void _simx_current_connection_status_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void _simx_signal_quality_report_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
+void _simx_sms_read_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 
 void _simx_notification_receive(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void _simx_notification_sms(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
@@ -77,6 +78,7 @@ typedef enum
     AT_CIPCLOSE,
     AT_CIPHEAD,
     AT_CSCS,
+    AT_CMGR,
 }simx_cmd_t;
 
 typedef struct
@@ -134,7 +136,10 @@ simx_cmd_spec_t simx_cmd_spec[] =
      {.cmd = AT_CIPSEND,   CMD_STR("CIPSEND="),  .f_frm = simx_rcv_sdframe, .f_msg = NULL},
      {.cmd = AT_CIPCLOSE,  CMD_STR("CIPCLOSE="), .f_frm = simx_rcv_dframe,  .f_msg = NULL},
      {.cmd = AT_CIPHEAD,   CMD_STR("CIPHEAD="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL},
-     {.cmd = AT_CSCS,      CMD_STR("CSCS="),     .f_frm = simx_rcv_dframe,  .f_msg = NULL}};
+     {.cmd = AT_CSCS,      CMD_STR("CSCS="),     .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_CMGR,      CMD_STR("CMGR="),     .f_frm = simx_rcv_rframe,  .f_msg = _simx_sms_read_resp}};
+
+
 
 simx_notif_spec_t simx_notif_spec[] = 
     {{CMD_STR("+RECEIVE,"),   .f = _simx_notification_receive},
@@ -147,7 +152,43 @@ sim300_context_t g_context = {.pin_is_required = SIM_PIN_UNKNOW, .is_receive = 1
 
 void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t length);
 
+/***********************UTILS********************************/
+char* str_quotes(const char *src, char *dst, uint16_t maxlen)
+{
+    if(src == NULL)
+    {
+        return NULL;
+    }
+    char *c1 = strchr(src, '"');
+    if(c1 == NULL)
+    {
+        return NULL;
+    }
+    c1++;
+    char *c2 = strchr(c1, '"');
+    if(c2 == NULL)
+    {
+        return NULL;
+    }
+    unsigned int len = (unsigned int)c2 - (unsigned int)c1;
+    if(len == 1)
+    {
+        dst[0] = 0;
+        return c2;
+    }
+    if(len < maxlen)
+    {
+        memcpy(dst, c1, len);
+        dst[len] = 0;
+        return c1 + len + 1;
+    }
+    else
+    {
+        return c2;
+    }
+}
 
+/*******************************************************/
 
 void simx_finished(sim300_context_t *context)
 {
@@ -990,6 +1031,35 @@ void simx_send_sms(sim_reply_t *reply, const char *number, const char* msg)
     //todo validate number
     g_context.cmd_data = msg;
     sim300_send_at_cmd_vp(&g_context, reply, AT_CMGS, "\"%s\"", number);
+}
+
+void _simx_sms_read_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length)
+{
+    sim_sms_t *sms = (sim_sms_t*)context->reply->user_pointer;
+    if(memcmp(buffer, "+CMGR:", sizeof("+CMGR:") - 1) == 0)
+    {
+        char strstaus[10];
+        char *c = (char*)buffer;
+        c = str_quotes(c, strstaus, 10);
+        if(c == NULL) return;
+        c = str_quotes(c + 1, sms->number, 13);
+        if(c == NULL) return;
+        c = str_quotes(c + 1, sms->mt, 17);
+        if(c == NULL) return;
+        c = str_quotes(c + 1, sms->date, 22);
+    }
+    else
+    {
+        uint16_t len = sms->msg_length > length ? length - 2 : sms->msg_length;
+        memcpy(sms->msg, buffer, len);
+        sms->msg[len] = 0;
+    }
+}
+
+void simx_read_sms(sim_reply_t *reply, sim_sms_t *sim_sms, uint16_t n)
+{
+    reply->user_pointer = sim_sms;
+    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGR, "%i", n);
 }
 
 sim_pin_status_t sim_pin_required()
