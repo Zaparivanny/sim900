@@ -493,7 +493,7 @@ TEST(AutoTestSim900, SIM_AT_CMGR)
     EXPECT_EQ(g_length, strlen("AT+CMGR=4\r\n"));
     EXPECT_STREQ(g_data, "AT+CMGR=4\r\n");
     
-    simx_test_send("\r\n+CMGR: \"REC READ\",\"MTC111111111111111\",\"\",\"18/01/22,19:07:20+12\"\r\n"
+    simx_test_send("\r\n+CMGR: \"REC READ\",\"looooooooooooooooooooooooooooooong\",\"\",\"18/01/22,19:07:20+12\"\r\n"
                    "test message\r\n\r\nOK\r\n");
     
     simx_test_send("\r\nOK\r\n");
@@ -505,6 +505,50 @@ TEST(AutoTestSim900, SIM_AT_CMGR)
     EXPECT_EQ(reply.status, SIM300_OK);
 }
 
+
+TEST(AutoTestSim900, SIM_AT_CGDCONT)
+{
+    sim_reply_t reply;
+    simx_define_pdp_context(&reply, 1, "IP", "internet.mts.ru");
+    EXPECT_EQ(g_length, strlen("AT+CGDCONT=1,\"IP\",\"internet.mts.ru\"\r\n"));
+    EXPECT_STREQ(g_data, "AT+CGDCONT=1,\"IP\",\"internet.mts.ru\"\r\n");
+    simx_test_send("\r\nOK\r\n");
+    EXPECT_EQ(reply.status, SIM300_OK);
+    
+    simx_define_pdp_context(&reply, 1, "IP", "internet.mts.ru");
+    simx_test_send("\r\nERROR\r\n");
+    EXPECT_EQ(reply.status, SIM300_ERROR);
+}
+
+TEST(AutoTestSim900, SIM_ATD)
+{
+    sim_reply_t reply;
+    simx_call_to_dial_number(&reply, "*99***1#");
+    EXPECT_EQ(g_length, strlen("ATD*99***1#\r\n"));
+    EXPECT_STREQ(g_data, "ATD*99***1#\r\n");
+    simx_test_send("\r\nCONNECT\r\n");
+    EXPECT_EQ(reply.status, SIM300_CONNECT);
+}
+
+TEST(AutoTestSim900, SIM_ATO_PPP)
+{
+    sim_reply_t reply;
+    simx_switch_mode(&reply, SIM_DATA_MODE);
+    EXPECT_EQ(g_length, strlen("ATO\r\n"));
+    EXPECT_STREQ(g_data, "ATO\r\n");
+    simx_test_send("\r\nCONNECT\r\n");
+    EXPECT_EQ(reply.status, SIM300_CONNECT);
+    
+    simx_switch_mode(&reply, SIM_DATA_MODE);
+    simx_test_send("\r\nNO CARRIER\r\n");
+    EXPECT_EQ(reply.status, SIM300_NO_CARRIER);
+    
+    simx_switch_mode(&reply, SIM_COMMAND_MODE);
+    EXPECT_EQ(g_length, strlen("+++"));
+    EXPECT_STREQ(g_data, "+++");
+    simx_test_send("\r\nOK\r\n");
+    EXPECT_EQ(reply.status, SIM300_OK);
+}
 
 TEST(AutoTestSim900MSG, SIM_MSG_CALLBACK)
 {

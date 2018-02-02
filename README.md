@@ -13,28 +13,32 @@ git clone --recursive https://github.com/Zaparivanny/sim900.git
 
 ## Supported commands
 
-| Command      |  Description                                          |
-|--------------|-------------------------------------------------------|
-| AT                                                                   |
-| AT+CPIN?     | Enter PIN                                             |
-| AT+CREG?     | Network Registration                                  |
-| AT+CSMINS?   | Sim inserted status reporting                         |
-| AT+CGATT?    | Attach or detach from gprs service                    |
-| AT+CIPSHUT   | Deactivate gprs pdp context                           |
-| AT+CIPSTATUS | Query Current Connection Status                       |
-| AT+CIPMUX=   | Start Up Multi-IP Connection                          |
-| AT+CSTT=     | Start Task and Set APN, USER NAME, PASSWORD           |
-| AT+CIICR     | Bring Up Wireless Connection with GPRS or CSD         |
-| AT+CIFSR     | Get Local IP Address                                  |
-| AT+CSQ       | Signal quality report                                 |
-| AT+CIPSTART= | Start up tcp or udp connection                        |
-| AT+CIPSEND=  | Send data through tcp or udp connection               |
-| AT+CIPCLOSE= | Close tcp or udp connection                           |
-| AT+CIPHEAD=  | Add an ip head at the beginning of a package received |
-| AT+CSCS=     | Select TE Character Set                               |
-| AT+CMGF=     | Select SMS Message Format                             |
-| AT+CMGS=     | Send SMS message                                      |
-| CMGR=        | Read SMS Message                                      |
+| Command      |  Description                                                       |
+|--------------|--------------------------------------------------------------------|
+| AT                                                                                |
+| AT+CPIN?     | Enter PIN                                                          |
+| AT+CREG?     | Network Registration                                               |
+| AT+CSMINS?   | Sim inserted status reporting                                      |
+| AT+CGATT?    | Attach or detach from gprs service                                 |
+| AT+CIPSHUT   | Deactivate gprs pdp context                                        |
+| AT+CIPSTATUS | Query Current Connection Status                                    |
+| AT+CIPMUX=   | Start Up Multi-IP Connection                                       |
+| AT+CSTT=     | Start Task and Set APN, USER NAME, PASSWORD                        |
+| AT+CIICR     | Bring Up Wireless Connection with GPRS or CSD                      |
+| AT+CIFSR     | Get Local IP Address                                               |
+| AT+CSQ       | Signal quality report                                              |
+| AT+CIPSTART= | Start up tcp or udp connection                                     |
+| AT+CIPSEND=  | Send data through tcp or udp connection                            |
+| AT+CIPCLOSE= | Close tcp or udp connection                                        |
+| AT+CIPHEAD=  | Add an ip head at the beginning of a package received              |
+| AT+CSCS=     | Select TE Character Set                                            |
+| AT+CMGF=     | Select SMS Message Format                                          |
+| AT+CMGS=     | Send SMS message                                                   |
+| CMGR=        | Read SMS Message                                                   |
+| ATD          | Originate Call to Phone Number in Memory Which Corresponds to Field|
+| ATO          | Switch from Command Mode to Data Mode                              |
+| +++          | Switch from Data Mode or PPP Online Mode to Command Mode           |
+| AT+CGDCONT   | Define PDP Context                                                 |
 
 ## Implementation
 

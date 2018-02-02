@@ -21,6 +21,26 @@
 //+RECEIVE,1,53: - if AT+CIPMUX = 1
 // validate email http://www.ex-parrot.com/~pdw/Mail-RFC822-Address.html
 
+/*******pdp
+ * 
+ * "AT+CGDCONT=1,\"IP\",\"internet.mts.ru\""};
+ * "AT+CGQMIN=1,0,0,0,0,0"};
+ * "AT+CGQREQ=1,2,4,3,6,31"};
+ * "ATD*99***1#"};
+ **/
+//AT+CMEE = 1
+//AT+CDNSCFG="213.87.0.1","213.87.1.1"
+
+/*
+AT+CGACT?
++CGACT: 1,0
+AT+CMEE=1
+AT+CGATT=1
+AT+CGACT=1, 1
+AT+CGPADDR= 1
+*/
+
+//http://lwip.wikia.com/wiki/PPP
 
 typedef enum
 {
@@ -31,6 +51,12 @@ typedef enum
     SIM300_SEND_OK,
     SIM300_SEND_FAIL,
     SIM300_CLOSE_OK,
+    
+    SIM300_NO_DIALTONE,
+    SIM300_BUSY,
+    SIM300_NO_CARRIER,
+    SIM300_NO_ANSWER,
+    SIM300_CONNECT,
 }sim_status_t;
 
 /**
@@ -138,6 +164,12 @@ typedef enum
     SIM_8859_1,
 }sim_TE_chaster_t;
 
+typedef enum
+{
+    SIM_DATA_MODE,
+    SIM_COMMAND_MODE,
+}sim_pdp_mode_t;
+
 typedef struct
 {
     uint8_t addr0;
@@ -156,7 +188,7 @@ typedef struct
 typedef struct
 {
     sim_sms_status_t status;
-    char number[13];
+    char number[21];
     char mt[17];
     char date[22];
     char *msg;
@@ -182,10 +214,11 @@ void simx_pin_is_required(sim_reply_t *reply); // AT+CPIN?
 void simx_network_registration(sim_reply_t *reply);
 
 void simx_sim_inserted_status(sim_reply_t *reply);
-
 void simx_signal_quality_report(sim_reply_t *reply, uint8_t *lvl);
-
 void simx_set_TE_character(sim_reply_t *reply, sim_TE_chaster_t chaster);
+
+void simx_call_to_dial_number(sim_reply_t *reply, char *number);
+void simx_switch_mode(sim_reply_t *reply, sim_pdp_mode_t mode);
 
 /********GPRS************/
 void simx_is_attach_to_GPRS(sim_reply_t *reply);
@@ -193,6 +226,7 @@ void simx_deactivate_gprs_pdp(sim_reply_t *reply);
 void simx_set_gprs_config(sim_reply_t *reply, const char* apn, const char* username, const char* pass);
 void simx_bring_up_wireless_connection(sim_reply_t *reply);
 void simx_get_local_ip(sim_reply_t *reply, sim_ip_t *ip);
+void simx_define_pdp_context(sim_reply_t *reply, uint8_t cid, char *pdp_type, char *apn);
 
 /**********TCP IP***************/
 void simx_current_connection_status(sim_reply_t *reply);
@@ -207,6 +241,7 @@ void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode);
 void simx_send_sms(sim_reply_t *reply, const char* number, const char* msg);
 void simx_read_sms(sim_reply_t *reply, sim_sms_t *sim_sms, uint16_t n);
 //void simx_list_sms(sim_reply_t *reply, );
+
 
 sim_pin_status_t sim_pin_required();
 sim_reg_network_t sim_network_registration();

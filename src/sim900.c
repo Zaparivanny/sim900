@@ -79,6 +79,10 @@ typedef enum
     AT_CIPHEAD,
     AT_CSCS,
     AT_CMGR,
+    AT_CGDCONT,
+    ATD,
+    ATO,
+    PPP,
 }simx_cmd_t;
 
 typedef struct
@@ -96,6 +100,13 @@ typedef struct
     uint8_t len;
     fcmd_frame f;
 }simx_notif_spec_t;
+
+typedef struct
+{
+    char *cmdstr;
+    uint8_t len;
+    sim_status_t status;
+}sim_status_spec_t;
 
 typedef struct sim300_context_t
 {
@@ -118,18 +129,18 @@ typedef struct sim300_context_t
 
 #define CMD_STR(a) .cmdstr = a, .len = sizeof(a) - 1
 simx_cmd_spec_t simx_cmd_spec[] = 
-    {{.cmd = AT_CPINR,     CMD_STR("CPIN?"),     .f_frm = simx_rcv_rframe , .f_msg = _simx_pin_is_required_resp},
-     {.cmd = AT_CREG,      CMD_STR("CREG?"),     .f_frm = simx_rcv_rframe , .f_msg = _simx_network_registration_resp},
-     {.cmd = AT_CMGF,      CMD_STR("CMGF="),     .f_frm = simx_rcv_dframe , .f_msg = NULL},
-     {.cmd = AT_AT,        CMD_STR("AT"),        .f_frm = simx_rcv_dframe , .f_msg = NULL},
-     {.cmd = AT_CMGS,      CMD_STR("CMGS="),     .f_frm = simx_rcv_wframe , .f_msg = NULL},
-     {.cmd = AT_CSMINS,    CMD_STR("CSMINS?"),   .f_frm = simx_rcv_rframe , .f_msg = _simx_sim_inserted_status_resp},
-     {.cmd = AT_CGATT,     CMD_STR("CGATT?"),    .f_frm = simx_rcv_rframe , .f_msg = _simx_is_attach_to_GPRS_resp},
-     {.cmd = AT_CIPSHUT,   CMD_STR("CIPSHUT"),   .f_frm = simx_rcv_dframe , .f_msg = NULL},
-     {.cmd = AT_CIPSTATUS, CMD_STR("CIPSTATUS"), .f_frm = simx_rcv_mframe , .f_msg = _simx_current_connection_status_resp},
-     {.cmd = AT_CIPMUX,    CMD_STR("CIPMUX="),   .f_frm = simx_rcv_dframe , .f_msg = NULL},
-     {.cmd = AT_CSTT,      CMD_STR("CSTT="),     .f_frm = simx_rcv_dframe , .f_msg = NULL},
-     {.cmd = AT_CIICR,     CMD_STR("CIICR"),     .f_frm = simx_rcv_dframe , .f_msg = NULL},
+    {{.cmd = AT_CPINR,     CMD_STR("CPIN?"),     .f_frm = simx_rcv_rframe,  .f_msg = _simx_pin_is_required_resp},
+     {.cmd = AT_CREG,      CMD_STR("CREG?"),     .f_frm = simx_rcv_rframe,  .f_msg = _simx_network_registration_resp},
+     {.cmd = AT_CMGF,      CMD_STR("CMGF="),     .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_AT,        CMD_STR("AT"),        .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_CMGS,      CMD_STR("CMGS="),     .f_frm = simx_rcv_wframe,  .f_msg = NULL},
+     {.cmd = AT_CSMINS,    CMD_STR("CSMINS?"),   .f_frm = simx_rcv_rframe,  .f_msg = _simx_sim_inserted_status_resp},
+     {.cmd = AT_CGATT,     CMD_STR("CGATT?"),    .f_frm = simx_rcv_rframe,  .f_msg = _simx_is_attach_to_GPRS_resp},
+     {.cmd = AT_CIPSHUT,   CMD_STR("CIPSHUT"),   .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_CIPSTATUS, CMD_STR("CIPSTATUS"), .f_frm = simx_rcv_mframe,  .f_msg = _simx_current_connection_status_resp},
+     {.cmd = AT_CIPMUX,    CMD_STR("CIPMUX="),   .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_CSTT,      CMD_STR("CSTT="),     .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_CIICR,     CMD_STR("CIICR"),     .f_frm = simx_rcv_dframe,  .f_msg = NULL},
      {.cmd = AT_CIFSR,     CMD_STR("CIFSR"),     .f_frm = simx_rcv_ipframe, .f_msg = NULL},
      {.cmd = AT_CSQ,       CMD_STR("CSQ"),       .f_frm = simx_rcv_rframe , .f_msg = _simx_signal_quality_report_resp},
      {.cmd = AT_CIPSTART,  CMD_STR("CIPSTART="), .f_frm = simx_rcv_dframe , .f_msg = NULL},
@@ -137,7 +148,11 @@ simx_cmd_spec_t simx_cmd_spec[] =
      {.cmd = AT_CIPCLOSE,  CMD_STR("CIPCLOSE="), .f_frm = simx_rcv_dframe,  .f_msg = NULL},
      {.cmd = AT_CIPHEAD,   CMD_STR("CIPHEAD="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL},
      {.cmd = AT_CSCS,      CMD_STR("CSCS="),     .f_frm = simx_rcv_dframe,  .f_msg = NULL},
-     {.cmd = AT_CMGR,      CMD_STR("CMGR="),     .f_frm = simx_rcv_rframe,  .f_msg = _simx_sms_read_resp}};
+     {.cmd = AT_CMGR,      CMD_STR("CMGR="),     .f_frm = simx_rcv_rframe,  .f_msg = _simx_sms_read_resp},
+     {.cmd = AT_CGDCONT,   CMD_STR("CGDCONT="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = ATD,          CMD_STR("ATD"),       .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = ATO,          CMD_STR("ATO"),       .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = PPP,          CMD_STR("PPP"),       .f_frm = simx_rcv_dframe,  .f_msg = NULL}};
 
 
 
@@ -145,6 +160,19 @@ simx_notif_spec_t simx_notif_spec[] =
     {{CMD_STR("+RECEIVE,"),   .f = _simx_notification_receive},
      {CMD_STR("+CMTI:"),      .f = _simx_notification_sms},
      {CMD_STR("+PDP: DEACT"), .f = _simx_notification_pdp_deact}};
+
+sim_status_spec_t sim_status_spec[] = 
+    {{CMD_STR("OK\r\n"), .status = SIM300_OK},
+    {CMD_STR("ERROR\r\n"), .status = SIM300_ERROR},
+    {CMD_STR("SHUT OK\r\n"), .status = SIM300_SHUT_OK},
+    {CMD_STR("SEND OK\r\n"), .status = SIM300_SEND_OK},
+    {CMD_STR("SEND FAIL\r\n"), .status = SIM300_SEND_FAIL},
+    {CMD_STR("CLOSE OK\r\n"), .status = SIM300_CLOSE_OK},
+    {CMD_STR("NO DIALTONE\r\n"), .status = SIM300_NO_DIALTONE},
+    {CMD_STR("BUSY\r\n"), .status = SIM300_BUSY},
+    {CMD_STR("NO CARRIER\r\n"), .status = SIM300_NO_CARRIER},
+    {CMD_STR("NO ANSWER\r\n"), .status = SIM300_NO_ANSWER},
+    {CMD_STR("CONNECT\r\n"), .status = SIM300_CONNECT},};
 
 static const char* te_chasters[] = {"GSM", "UCS2", "IRA", "HEX", "PCCP", "PCDN", "8859-1"};
 
@@ -272,13 +300,6 @@ void simx_rcv_rframe(sim300_context_t *context, uint8_t *buffer, uint16_t length
 
 void simx_rcv_dframe(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
-    
-    /*printf("%i [", length);
-    for(int i = 0; i < length; i++)
-    {
-        printf("%x", buffer[i]);
-    }
-    printf("]\r\n");*/
     switch(context->state)
     {
     case AT_CMD_ST_RN:
@@ -293,38 +314,33 @@ void simx_rcv_dframe(sim300_context_t *context, uint8_t *buffer, uint16_t length
         }
         break;
     case AT_CMD_ST_STATUS:
-        //printf("status: %s\n", buffer);
-        if(memcmp(buffer, "OK\r\n", 4) == 0)
+        
+        for(uint8_t i = 0; i < sizeof(sim_status_spec) / sizeof(sim_status_spec[0]); i++)
         {
-            context->reply->status = SIM300_OK;
+            if(memcmp(buffer, sim_status_spec[i].cmdstr, sim_status_spec[i].len) == 0)
+            {
+                context->reply->status = sim_status_spec[i].status;
+                simx_finished(context);
+                return;
+            }
         }
-        else if(memcmp(buffer, "ERROR\r\n", 7) == 0)
+        
+        uint8_t *tmp = buffer;
+        uint16_t len = length;
+        if(context->mux)
         {
-            context->reply->status = SIM300_ERROR;
+            tmp += 3;
+            len -= 3;
         }
-        else if(memcmp(buffer, "SHUT OK\r\n", 9) == 0)
+        if(memcmp(tmp, "CLOSE OK\r\n", len) == 0)
         {
-            context->reply->status = SIM300_SHUT_OK;
+            context->reply->status = SIM300_CLOSE_OK;
         }
         else
         {
-            uint8_t *tmp = buffer;
-            uint16_t len = length;
-            if(context->mux)
-            {
-                tmp += 3;
-                len -= 3;
-            }
-            if(memcmp(tmp, "CLOSE OK\r\n", len) == 0)
-            {
-                context->reply->status = SIM300_CLOSE_OK;
-            }
-            else
-            {
-                context->reply->status = SIM300_ERRFRAME;
-            }
-            //context->reply->status = SIM300_ERRFRAME;
+            context->reply->status = SIM300_ERRFRAME;
         }
+        
         simx_finished(context);
         break;
     }
@@ -721,6 +737,28 @@ void sim300_send_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_
     simx_callback_send(g_sim_tx_buffer, simx_cmd_spec[cmd].len + 5);
 }
 
+void sim300_send_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd, const char * format, ... )
+{
+    fsimx_receive = simx_receive_msg;
+    sim_cnt = 0;
+    context->is_receive = 0;
+    context->state = AT_CMD_ST_RN;
+    context->reply = reply;
+    context->cmd = cmd;
+    reply->status = 0;
+    sprintf(g_sim_tx_buffer, "%s", simx_cmd_spec[cmd].cmdstr);
+    uint16_t len = simx_cmd_spec[cmd].len;
+    va_list args;
+    va_start(args, format);
+    vsprintf(g_sim_tx_buffer + len, format, args);
+    va_end(args);
+    len = strlen(g_sim_tx_buffer);
+    g_sim_tx_buffer[len++] = '\r';
+    g_sim_tx_buffer[len++] = '\n';
+    g_sim_tx_buffer[len] = 0;
+    
+    simx_callback_send(g_sim_tx_buffer, len);
+}
 
 void sim300_send_at_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd, const char * format, ... )
 {
@@ -862,6 +900,31 @@ void simx_set_TE_character(sim_reply_t *reply, sim_TE_chaster_t chaster)
     sim300_send_at_cmd_vp(&g_context, reply, AT_CSCS, "\"%s\"", te_chasters[chaster]);
 }
 
+void simx_call_to_dial_number(sim_reply_t *reply, char *number)
+{
+    sim300_send_cmd_vp(&g_context, reply, ATD, "%s", number);
+}
+
+void simx_switch_mode(sim_reply_t *reply, sim_pdp_mode_t mode)
+{
+    if(mode == SIM_DATA_MODE)
+    {
+        sim300_send_no_at_cmd(&g_context, reply, ATO);
+    }
+    else
+    {
+        fsimx_receive = simx_receive_msg;
+        sim_cnt = 0;
+        g_context.is_receive = 0;
+        g_context.state = AT_CMD_ST_RN;
+        g_context.reply = reply;
+        g_context.cmd = PPP;
+        reply->status = 0;
+        sprintf(g_sim_tx_buffer, "+++");
+        simx_callback_send(g_sim_tx_buffer, 3);
+    }
+}
+
 void _simx_is_attach_to_GPRS_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
     int n;
@@ -909,6 +972,11 @@ void simx_get_local_ip(sim_reply_t *reply, sim_ip_t *ip)
 {
     reply->user_pointer = ip;
     sim300_send_at_cmd(&g_context, reply, AT_CIFSR);
+}
+
+void simx_define_pdp_context(sim_reply_t *reply, uint8_t cid, char *pdp_type, char *apn)
+{
+    sim300_send_at_cmd_vp(&g_context, reply, AT_CGDCONT, "%i,\"%s\",\"%s\"", cid, pdp_type, apn);
 }
 
 void _simx_multiple_connection_finished(sim300_context_t *context)
@@ -1042,7 +1110,7 @@ void _simx_sms_read_resp(struct sim300_context_t *context, uint8_t *buffer, uint
         char *c = (char*)buffer;
         c = str_quotes(c, strstaus, 10);
         if(c == NULL) return;
-        c = str_quotes(c + 1, sms->number, 13);
+        c = str_quotes(c + 1, sms->number, 21);
         if(c == NULL) return;
         c = str_quotes(c + 1, sms->mt, 17);
         if(c == NULL) return;
