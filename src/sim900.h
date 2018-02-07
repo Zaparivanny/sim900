@@ -3,8 +3,6 @@
 
 #include "stdint.h"
 
-//https://vsblogs.wordpress.com/2013/11/28/tcp-connection-over-gprs-using-sim900-and-at-commands
-
 //+CMTI: "SM",1 - Unsolicited notification of the SMS arriving 
 
 //AT+CBAND?  GET AND SET MOBILE OPERATION BAND
@@ -170,6 +168,20 @@ typedef enum
     SIM_COMMAND_MODE,
 }sim_pdp_mode_t;
 
+typedef enum
+{
+    SIM_CSD = 0,
+    SIM_GPRS = 1,
+}sim_connection_mode_t;
+
+typedef enum
+{
+    SIM_CSD_RATE_2400 = 2400,
+    SIM_CSD_RATE_4800 = 4800,
+    SIM_CSD_RATE_9600 = 9600,
+    SIM_CSD_RATE_14400 = 14400,
+}sim_csd_rate_t;
+
 typedef struct
 {
     uint8_t addr0;
@@ -227,6 +239,8 @@ void simx_set_gprs_config(sim_reply_t *reply, const char* apn, const char* usern
 void simx_bring_up_wireless_connection(sim_reply_t *reply);
 void simx_get_local_ip(sim_reply_t *reply, sim_ip_t *ip);
 void simx_define_pdp_context(sim_reply_t *reply, uint8_t cid, char *pdp_type, char *apn);
+void simx_set_connection_mode(sim_reply_t *reply, sim_connection_mode_t mode, char *apn, 
+                              char *user_name, char *pass, sim_csd_rate_t rate);
 
 /**********TCP IP***************/
 void simx_current_connection_status(sim_reply_t *reply);

@@ -550,6 +550,28 @@ TEST(AutoTestSim900, SIM_ATO_PPP)
     EXPECT_EQ(reply.status, SIM300_OK);
 }
 
+TEST(AutoTestSim900, SIM_AT_CIPCSGP)
+{
+    sim_reply_t reply;
+    simx_set_connection_mode(&reply, SIM_CSD, "internet.mts.ru", "mts", "mts", SIM_CSD_RATE_14400);
+    EXPECT_EQ(g_length, strlen("AT+CIPCSGP=0,\"internet.mts.ru\",\"mts\",\"mts\",14400\r\n"));
+    EXPECT_STREQ(g_data, "AT+CIPCSGP=0,\"internet.mts.ru\",\"mts\",\"mts\",14400\r\n");
+    
+    simx_test_send("\r\nOK\r\n");
+    EXPECT_EQ(reply.status, SIM300_OK);
+    
+    simx_set_connection_mode(&reply, SIM_CSD, "internet.mts.ru", "mts", "mts", SIM_CSD_RATE_14400);
+    simx_test_send("\r\nERROR\r\n");
+    EXPECT_EQ(reply.status, SIM300_ERROR);
+    
+    simx_set_connection_mode(&reply, SIM_GPRS, "internet.mts.ru", "mts", "mts", SIM_CSD_RATE_14400);
+    EXPECT_EQ(g_length, strlen("AT+CIPCSGP=1,\"internet.mts.ru\",\"mts\",\"mts\"\r\n"));
+    EXPECT_STREQ(g_data, "AT+CIPCSGP=1,\"internet.mts.ru\",\"mts\",\"mts\"\r\n");
+    
+    simx_test_send("\r\nOK\r\n");
+    EXPECT_EQ(reply.status, SIM300_OK);
+}
+
 TEST(AutoTestSim900MSG, SIM_MSG_CALLBACK)
 {
     sim_reply_t reply;

@@ -83,6 +83,7 @@ typedef enum
     ATD,
     ATO,
     PPP,
+    AT_CIPCSGP,
 }simx_cmd_t;
 
 typedef struct
@@ -152,7 +153,8 @@ simx_cmd_spec_t simx_cmd_spec[] =
      {.cmd = AT_CGDCONT,   CMD_STR("CGDCONT="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL},
      {.cmd = ATD,          CMD_STR("ATD"),       .f_frm = simx_rcv_dframe,  .f_msg = NULL},
      {.cmd = ATO,          CMD_STR("ATO"),       .f_frm = simx_rcv_dframe,  .f_msg = NULL},
-     {.cmd = PPP,          CMD_STR("PPP"),       .f_frm = simx_rcv_dframe,  .f_msg = NULL}};
+     {.cmd = PPP,          CMD_STR("PPP"),       .f_frm = simx_rcv_dframe,  .f_msg = NULL},
+     {.cmd = AT_CIPCSGP,   CMD_STR("CIPCSGP="),  .f_frm = simx_rcv_dframe,  .f_msg = NULL}};
 
 
 
@@ -977,6 +979,25 @@ void simx_get_local_ip(sim_reply_t *reply, sim_ip_t *ip)
 void simx_define_pdp_context(sim_reply_t *reply, uint8_t cid, char *pdp_type, char *apn)
 {
     sim300_send_at_cmd_vp(&g_context, reply, AT_CGDCONT, "%i,\"%s\",\"%s\"", cid, pdp_type, apn);
+}
+
+void simx_set_connection_mode(sim_reply_t *reply, sim_connection_mode_t mode, char *apn, 
+                              char *user_name, char *pass, sim_csd_rate_t rate)
+{
+    if(mode == SIM_CSD)
+    {
+        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPCSGP, 
+                              "%i,\"%s\",\"%s\",\"%s\",%i", mode, apn, user_name, pass, rate);
+    }
+    else if(mode == SIM_GPRS)
+    {
+        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPCSGP, 
+                              "%i,\"%s\",\"%s\",\"%s\"", mode, apn, user_name, pass);
+    }
+    else
+    {
+        //TODO ERROR
+    }
 }
 
 void _simx_multiple_connection_finished(sim300_context_t *context)

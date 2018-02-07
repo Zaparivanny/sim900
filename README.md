@@ -39,6 +39,7 @@ git clone --recursive https://github.com/Zaparivanny/sim900.git
 | ATO          | Switch from Command Mode to Data Mode                              |
 | +++          | Switch from Data Mode or PPP Online Mode to Command Mode           |
 | AT+CGDCONT   | Define PDP Context                                                 |
+| AT+CIPCSGP=  | Set CSD or GPRS for Connection Mode                                |
 
 ## Implementation
 
