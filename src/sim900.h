@@ -42,6 +42,7 @@ AT+CGPADDR= 1
 
 typedef enum
 {
+    SIM300_NULL = 0x0,
     SIM300_OK = 0x1,
     SIM300_ERROR,
     SIM300_SHUT_OK,
@@ -219,7 +220,7 @@ void simx_callback_send(uint8_t *data, uint16_t length);
 void simx_callback_tcp_msg(sim_con_status_t con_status, uint8_t n);
 void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n);
 void simx_callback_sms_received(uint16_t number);
-void simx_callback_pdp_deact();
+void simx_callback_pdp_deact(void);
 
 void simx_test(sim_reply_t *reply);
 void simx_pin_is_required(sim_reply_t *reply); // AT+CPIN?
@@ -257,12 +258,12 @@ void simx_read_sms(sim_reply_t *reply, sim_sms_t *sim_sms, uint16_t n);
 //void simx_list_sms(sim_reply_t *reply, );
 
 
-sim_pin_status_t sim_pin_required();
-sim_reg_network_t sim_network_registration();
-int8_t sim_is_inserted();
-int8_t gprs_is_attach();
-sim_cip_state_t current_connection_status();
-uint8_t sim_cip_mux_mode();
+sim_pin_status_t sim_pin_required(void);
+sim_reg_network_t sim_network_registration(void);
+int8_t sim_is_inserted(void);
+int8_t gprs_is_attach(void);
+sim_cip_state_t current_connection_status(void);
+uint8_t sim_cip_mux_mode(void);
 #ifdef __cplusplus
 }
 #endif
