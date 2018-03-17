@@ -111,17 +111,38 @@ typedef enum
 9   PDP DEACT */
 typedef enum
 {
-    CIP_IP_INITIAL = 0x0,
-    CIP_IP_START,
-    CIP_IP_CONFIG,
-    CIP_IP_GPRSACT,
-    CIP_IP_STATUS,
-    CIP_CONNECT_OK,
-    CIP_CONN_LISTENING,
-    CIP_CLOSING,
-    CIP_CLOSED,
-    CIP_PDP_DEACT,
+    CIP_IP_INITIAL     = 0x0,
+    CIP_IP_START       = 0x1,
+    CIP_IP_CONFIG      = 0x2,
+    CIP_IP_GPRSACT     = 0x3,
+    CIP_IP_STATUS      = 0x4,
+    CIP_CONN_LISTENING = 0x5,
+    CIP_CONNECT_OK     = 0x6,
+    CIP_CLOSING        = 0x7,
+    CIP_CLOSED         = 0x8,
+    CIP_PDP_DEACT      = 0x9,
 }sim_cip_state_t;
+
+typedef enum
+{
+    MUX_CIP_IP_INITIAL     = 0x0,
+    MUX_CIP_IP_START       = 0x1,
+    MUX_CIP_IP_CONFIG      = 0x2,
+    MUX_CIP_IP_GPRSACT     = 0x3,
+    MUX_CIP_IP_STATUS      = 0x4,
+    MUX_CIP_IP_PROCESSUNG  = 0x5,
+    MUX_CIP_PDP_DEACT      = 0x9,
+}sim_mux_cip_state_t;
+
+typedef enum
+{
+    CCP_INITIAL = 0x1,
+    CCP_CONNECTING,
+    CCP_CONNECTED,
+    CCP_REMOTE_CLOSING,
+    CCP_CLOSING,
+    CCP_CLOSED,
+}sim_cip_client_state_t;
 
 typedef enum
 {
@@ -193,6 +214,17 @@ typedef struct
 
 typedef struct
 {
+    char type;
+    uint8_t n;
+    uint8_t bearer;
+    sim_tcp_mode_t mode;
+    sim_ip_t ip;
+    uint16_t port;
+    sim_cip_client_state_t state;
+}sim_cipstatus_t;
+
+typedef struct
+{
     sim_status_t status;
     uint32_t user_data;
     void *user_pointer;
@@ -244,7 +276,7 @@ void simx_set_connection_mode(sim_reply_t *reply, sim_connection_mode_t mode, ch
                               char *user_name, char *pass, sim_csd_rate_t rate);
 
 /**********TCP IP***************/
-void simx_current_connection_status(sim_reply_t *reply);
+void simx_current_connection_status(sim_reply_t *reply, sim_cipstatus_t *cipstatus, uint8_t size);
 void simx_multiple_connection(sim_reply_t *reply, uint8_t mode);
 void simx_tcp_connect(sim_reply_t *reply, sim_tcp_mode_t tcp_mode, char *address, uint16_t port, int n);
 void simx_tcp_send_data(sim_reply_t *reply, uint8_t *data, uint16_t length, int n);

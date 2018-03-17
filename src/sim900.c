@@ -230,6 +230,72 @@ char* str_quotes(const char *src, char *dst, uint16_t maxlen)
     }
 }
 
+typedef struct
+{
+    char *str;
+    uint8_t size;
+}str_tocken_t;
+
+void _strchrcpy(char *src, str_tocken_t *tocken, uint8_t size)
+{
+    uint32_t n = strlen(src);
+    uint8_t cnt = 0;
+    if(src[0] != ',')
+    {
+        tocken[cnt].str = src;
+    }
+    
+    for(int i = 0; i < n; i++)
+    {
+        if(src[i] == ',')
+        {
+            if(++cnt == size)
+            {
+                break;
+            }
+            tocken[cnt].str = src + i + 1;
+        }
+        else
+        {
+            tocken[cnt].size++;
+        }
+    }
+}
+
+
+
+uint8_t str_to_ip(char *strip, sim_ip_t *ip)
+{
+    int v1, v2, v3, v4;
+    int n = sscanf(strip, "%i.%i.%i.%i", &v1, &v2, &v3, &v4);
+    if(n == 4)
+    {
+        ip->addr0 = v1;
+        ip->addr1 = v2;
+        ip->addr2 = v3;
+        ip->addr3 = v4;
+        return 0;
+    }
+    return -1;
+}
+
+sim_tcp_mode_t str_to_tcp_mode(uint8_t *str)
+{
+    sim_tcp_mode_t mode;
+    if(memcmp(str, "TCP", 3) == 0)
+    {
+        mode = SIM_TCP;
+    }
+    else if(memcmp(str, "UDP", 3) == 0)
+    {
+        mode = SIM_UDP;
+    }
+    else
+    {
+        mode = -1;
+    }
+    return mode;
+}
 /*******************************************************/
 
 void simx_finished(sim300_context_t *context)
@@ -515,13 +581,12 @@ void simx_rcv_sdframe(struct sim300_context_t *context, uint8_t *buffer, uint16_
     switch(context->state)
     {
     case AT_CMD_ST_RN:
-        simx_callback_send((uint8_t*)context->reply->user_pointer, context->reply->user_data);
         context->state = AT_CMD_ST_MSG;
         break;
     case AT_CMD_ST_MSG:
         if(length == 2)
         {
-            
+            simx_callback_send((uint8_t*)context->reply->user_pointer, context->reply->user_data);
         }
         else 
         {
@@ -1019,7 +1084,130 @@ void _simx_multiple_connection_finished(sim300_context_t *context)
         context->mux = context->reply->user_data;
     }
 }
+/*
+void _simx_current_connection_status_parse(sim300_context_t *context, char *buffer, uint16_t length)
+{
+    if(length < 17)
+    {
+        return;
+    }
+    char mem[4][19] = {0};
+    int n1, n2 = 0;
+    char c;
+    uint8_t cmtp = 0;
+    c = buffer[0];
+    n1 = buffer[3] - 0x30;
+    printf("_simx_current_connection_status_parse: %s", buffer);
+    for(uint8_t i = 0; i < 10; i++)
+    {
+        if(buffer[i] == ',')
+        {
+            if(++cmtp == 2)
+            {
+                buffer += i + 1;
+                break;
+            }
+        }
+    }
+    
+    int k = sscanf(buffer, "\"%[^\"]\",\"%[^\"]\",\"%[^\"]\",\"%[^\"]\"", 
+                   mem[0], mem[1], mem[2], mem[3]);
+    if(k == 4)
+    {
+        sim_cipstatus_t *st = context->reply->user_pointer;
+        uint8_t stsize = context->reply->user_data;
+        if(stsize > n1)
+        {
+            st[n1].type = c;
+            st[n1].n = n1;
+            st[n1].bearer = n2;
+            st[n1].mode = str_to_tcp_mode(mem[0]);
+            str_to_ip(mem[1], &st[n1].ip);
+            int port;
+            sscanf(mem[2], "%i", &port);
+            st[n1].port = port;
+        }
+    }
+    if(n1 == 7)
+    {
+        g_context.is_receive = 1;
+    }
+}*/
 
+void _simx_current_connection_status_parse(sim300_context_t *context, char *buffer, uint16_t length)
+{
+    if(length < 17)
+    {
+        return;
+    }
+    
+    sim_cipstatus_t *st = context->reply->user_pointer;
+    uint8_t stsize = context->reply->user_data;
+    
+    char c1 = buffer[0];
+    int n1 = buffer[3] - 0x30;
+    if(stsize > n1)
+    {
+    
+        st[n1].n = n1;
+        st[n1].type = c1;
+        
+        str_tocken_t mem[8] = {0};
+        char *c = buffer + 5;
+        
+        _strchrcpy(c, mem, 20);
+        if(mem[0].size != 0)
+        {
+            st[n1].bearer = mem[0].str[0] - 0x30;
+        }
+        if(mem[1].size > 2)
+        {
+            st[n1].mode = str_to_tcp_mode(mem[1].str + 1);
+        }
+        if(mem[2].size > 2)
+        {
+            str_to_ip(mem[2].str + 1, &st[n1].ip);
+        }
+        if(mem[3].size > 2)
+        {
+            int port;
+            sscanf(mem[3].str + 1, "%i", &port);
+            st[n1].port = port;
+        }
+        
+        /*static const sim_mux_cip_state_t cip_state[] = {
+            MUX_CIP_IP_INITIAL, MUX_CIP_IP_START, MUX_CIP_IP_CONFIG, 
+            MUX_CIP_IP_GPRSACT, MUX_CIP_IP_STATUS, MUX_CIP_IP_PROCESSUNG, MUX_CIP_PDP_DEACT};
+        
+        static const char *cipstate[] = {"IP INITIAL",
+            "IP START", "IP CONFIG", "IP GPRSACT", "IP STATUS",
+            "IP PROCESSUNG", "PDP DEACT"};*/
+        static const sim_cip_client_state_t cip_state[] = {
+                CCP_INITIAL, CCP_CONNECTING, CCP_CONNECTED, 
+                CCP_REMOTE_CLOSING, CCP_CLOSING, CCP_CLOSED};
+            
+        static const char *cipstate[] = {
+            "INITIAL", "CONNECTING", "CONNECTED", "REMOTE CLOSING",
+            "CLOSING", "CLOSED"};
+          
+        if(mem[4].size > 2)
+        {
+            for(uint8_t i = 0; i < sizeof(cip_state) / sizeof(cip_state[0]); i++)
+            {
+                if(memcmp(mem[4].str + 1, cipstate[i], strlen(cipstate[i])) == 0)
+                {
+                    st[n1].state = cip_state[i];
+                    break;
+                }
+            }
+        }
+    }
+    
+    if(n1 == 7)
+    {
+        g_context.is_receive = 1;
+    }
+}
 
 void _simx_current_connection_status_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
@@ -1027,34 +1215,46 @@ void _simx_current_connection_status_resp(sim300_context_t *context, uint8_t *bu
     {
         if(memcmp(buffer, "STATE: ", 7) == 0)
         {
-            const sim_cip_state_t cip_state[] = {CIP_IP_INITIAL,
+            static const sim_cip_state_t cip_state[] = {CIP_IP_INITIAL,
                 CIP_IP_START, CIP_IP_CONFIG, CIP_IP_GPRSACT, CIP_IP_STATUS,
                 CIP_CONN_LISTENING, CIP_CONN_LISTENING, CIP_CONN_LISTENING,
                 CIP_CONNECT_OK, CIP_CLOSING, CIP_CLOSING, CIP_CLOSED, 
                 CIP_CLOSED, CIP_PDP_DEACT};
-            const char *cipstate[] = {"IP INITIAL\0",
+            static const char *cipstate[] = {"IP INITIAL\0",
                 "IP START\0", "IP CONFIG\0", "IP GPRSACT\0", "IP STATUS\0",
                 "TCP CONNECTING\0", "UDP CONNECTING\0", "SERVER LISTENING\0", 
                 "CONNECT OK\0", "TCP CLOSING\0", "UDP CLOSING\0", "TCP CLOSED\0",
                 "UDP CLOSED\0", "PDP DEACT\0"};
             
-            for(uint8_t i = 0; i < sizeof(cipstate) / sizeof(cipstate[0]); i++)
+            for(uint8_t i = 0; i < sizeof(cip_state) / sizeof(cip_state[0]); i++)
             {
                 if(memcmp(buffer + 7, cipstate[i], strlen(cipstate[i])) == 0)
                 {
                     context->cip_state = cip_state[i];
-                    g_context.is_receive = 1;
+                    if(g_context.mux == 0)
+                    {
+                        g_context.is_receive = 1;
+                    }
                     return;
                 }
             }
-            context->cip_state = (sim_cip_state_t)-1;
-            g_context.is_receive = 1;
+            context->cip_state = (sim_cip_state_t) - 1;
+            if(g_context.mux == 0)
+            {
+                g_context.is_receive = 1;
+            }
+        }
+        else
+        {
+            _simx_current_connection_status_parse(context, buffer, length);
         }
     }
 }
 
-void simx_current_connection_status(sim_reply_t *reply)
+void simx_current_connection_status(sim_reply_t *reply, sim_cipstatus_t *cipstatus, uint8_t size)
 {
+    reply->user_data = size;
+    reply->user_pointer = cipstatus;
     sim300_send_at_cmd(&g_context, reply, AT_CIPSTATUS);
 }
 
@@ -1116,6 +1316,7 @@ void _simx_tcp_head_enable_finished(sim300_context_t *context)
 void simx_tcp_head_enable(sim_reply_t *reply, uint8_t is_enable)
 {
     is_enable = is_enable ? 1 : 0;
+    g_context.reply = reply;
     g_context.reply->user_data = is_enable;
     fcmd_finished = _simx_tcp_head_enable_finished;
     sim300_send_at_cmd_vp(&g_context, reply, AT_CIPHEAD, "%i", is_enable);
