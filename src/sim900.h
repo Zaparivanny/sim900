@@ -137,7 +137,7 @@ typedef enum
 
 typedef enum
 {
-    SIM_TCP_CONNECT_OK,
+    SIM_TCP_CONNECT_OK = 1,
     SIM_TCP_ALREADY_CONNECT,
     SIM_TCP_CONNECT_FAIL,
     SIM_TCP_CLOSED,
@@ -213,8 +213,8 @@ typedef struct
 #endif
  
 void simx_receive(uint8_t byte);
-void simx_wait_reply();
-uint8_t simx_is_receive();
+void simx_wait_reply(void);
+uint8_t simx_is_receive(void);
 
 void simx_callback_send(uint8_t *data, uint16_t length);
 void simx_callback_tcp_msg(sim_con_status_t con_status, uint8_t n);

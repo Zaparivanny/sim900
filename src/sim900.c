@@ -51,7 +51,7 @@ void sim300_send_cmd_vp(struct sim300_context_t *context, sim_reply_t *reply, si
 void sim300_send_no_at_cmd(struct sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd);
 void sim300_send_at_cmd(struct sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd);
 uint8_t simx_is_receive(void);
-void simx_wait_reply(void);
+
 
 void simx_rcv_rframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void simx_rcv_wframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
@@ -515,13 +515,20 @@ void simx_rcv_sdframe(struct sim300_context_t *context, uint8_t *buffer, uint16_
     switch(context->state)
     {
     case AT_CMD_ST_RN:
-        simx_callback_send((uint8_t*)context->reply->user_pointer, context->reply->user_data);
+        
         context->state = AT_CMD_ST_MSG;
         break;
     case AT_CMD_ST_MSG:
         if(length == 2)
         {
-            
+            if(buffer[0] == '>')
+            {
+                for(uint32_t i = 0; i < 500000; i++)
+                {
+                    asm("nop");
+                }
+                simx_callback_send((uint8_t*)context->reply->user_pointer, context->reply->user_data);
+            }
         }
         else 
         {
@@ -722,6 +729,10 @@ void simx_wait_reply()
     while(g_context.is_receive == 0)
     {
         
+    }
+    for(uint32_t i = 0; i < 500000; i++)
+    {
+        asm("nop");
     }
 }
 
@@ -1116,6 +1127,7 @@ void _simx_tcp_head_enable_finished(sim300_context_t *context)
 void simx_tcp_head_enable(sim_reply_t *reply, uint8_t is_enable)
 {
     is_enable = is_enable ? 1 : 0;
+    g_context.reply = reply;
     g_context.reply->user_data = is_enable;
     fcmd_finished = _simx_tcp_head_enable_finished;
     sim300_send_at_cmd_vp(&g_context, reply, AT_CIPHEAD, "%i", is_enable);
