@@ -3,6 +3,10 @@
 
 #include "stdint.h"
 
+#define SIM_RX_BUFFER 2048
+#define SIM_TX_BUFFER 2048
+#define SIM900_TIMEOUT 5000
+
 //+CMTI: "SM",1 - Unsolicited notification of the SMS arriving 
 
 //AT+CBAND?  GET AND SET MOBILE OPERATION BAND
@@ -56,6 +60,7 @@ typedef enum
     SIM300_NO_CARRIER,
     SIM300_NO_ANSWER,
     SIM300_CONNECT,
+    SIM300_TIMEOUT,
 }sim_status_t;
 
 /**
@@ -247,12 +252,14 @@ typedef struct
 void simx_receive(uint8_t byte);
 void simx_wait_reply(void);
 uint8_t simx_is_receive(void);
+void simx_tick_1ms(void);
 
 void simx_callback_send(uint8_t *data, uint16_t length);
 void simx_callback_tcp_msg(sim_con_status_t con_status, uint8_t n);
 void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n);
 void simx_callback_sms_received(uint16_t number);
 void simx_callback_pdp_deact(void);
+void simx_callback_timeout(void);
 
 void simx_test(sim_reply_t *reply);
 void simx_pin_is_required(sim_reply_t *reply); // AT+CPIN?
@@ -287,6 +294,7 @@ void simx_tcp_head_enable(sim_reply_t *reply, uint8_t is_enable);
 void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode);
 void simx_send_sms(sim_reply_t *reply, const char* number, const char* msg);
 void simx_read_sms(sim_reply_t *reply, sim_sms_t *sim_sms, uint16_t n);
+
 //void simx_list_sms(sim_reply_t *reply, );
 
 

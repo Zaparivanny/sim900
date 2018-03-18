@@ -51,6 +51,11 @@ void simx_test_send(const char* msg)
     }
 }
 
+void simx_callback_timeout()
+{
+    
+}
+
 TEST(AutoTestSim900, SIM_AT)
 {
     EXPECT_EQ(1, 1);
@@ -88,8 +93,8 @@ TEST(AutoTestSim900, SIM_AT_CPIN)
     EXPECT_EQ(sim_pin_required(), PIN_READY);
     
     
-    static char *msg[] = {"READY", "SIM PIN", "SIM PUK", "PH_SIM PIN", 
-                          "PH_SIM PUK", "SIM PIN2", "SIM PUK2"};
+    static char *msg[] = {(char *)"READY", (char *)"SIM PIN", (char *)"SIM PUK", (char *)"PH_SIM PIN", 
+                          (char *)"PH_SIM PUK", (char *)"SIM PIN2", (char *)"SIM PUK2"};
     for(int i = 0; i < sizeof(msg) / sizeof(msg[0]); i++)
     {
         simx_pin_is_required(&reply);
@@ -379,7 +384,7 @@ TEST(AutoTestSim900, SIM_AT_CIPSTART)
 {
     sim_reply_t reply;
     
-    simx_tcp_connect(&reply, SIM_TCP, "www.google.com", 80, 1);
+    simx_tcp_connect(&reply, SIM_TCP, (char *)"www.google.com", 80, 1);
     EXPECT_EQ(g_length, strlen("AT+CIPSTART=1,\"TCP\",\"www.google.com\",80\r\n"));
     EXPECT_STREQ(g_data, "AT+CIPSTART=1,\"TCP\",\"www.google.com\",80\r\n");
     simx_test_send("\r\nOK\r\n");
@@ -548,13 +553,13 @@ TEST(AutoTestSim900, SIM_AT_CMGR)
 TEST(AutoTestSim900, SIM_AT_CGDCONT)
 {
     sim_reply_t reply;
-    simx_define_pdp_context(&reply, 1, "IP", "internet.mts.ru");
+    simx_define_pdp_context(&reply, 1, (char *)"IP", (char *)"internet.mts.ru");
     EXPECT_EQ(g_length, strlen("AT+CGDCONT=1,\"IP\",\"internet.mts.ru\"\r\n"));
     EXPECT_STREQ(g_data, "AT+CGDCONT=1,\"IP\",\"internet.mts.ru\"\r\n");
     simx_test_send("\r\nOK\r\n");
     EXPECT_EQ(reply.status, SIM300_OK);
     
-    simx_define_pdp_context(&reply, 1, "IP", "internet.mts.ru");
+    simx_define_pdp_context(&reply, 1, (char *)"IP", (char *)"internet.mts.ru");
     simx_test_send("\r\nERROR\r\n");
     EXPECT_EQ(reply.status, SIM300_ERROR);
 }
@@ -562,7 +567,7 @@ TEST(AutoTestSim900, SIM_AT_CGDCONT)
 TEST(AutoTestSim900, SIM_ATD)
 {
     sim_reply_t reply;
-    simx_call_to_dial_number(&reply, "*99***1#");
+    simx_call_to_dial_number(&reply, (char *)"*99***1#");
     EXPECT_EQ(g_length, strlen("ATD*99***1#\r\n"));
     EXPECT_STREQ(g_data, "ATD*99***1#\r\n");
     simx_test_send("\r\nCONNECT\r\n");
@@ -592,18 +597,18 @@ TEST(AutoTestSim900, SIM_ATO_PPP)
 TEST(AutoTestSim900, SIM_AT_CIPCSGP)
 {
     sim_reply_t reply;
-    simx_set_connection_mode(&reply, SIM_CSD, "internet.mts.ru", "mts", "mts", SIM_CSD_RATE_14400);
+    simx_set_connection_mode(&reply, SIM_CSD, (char *)"internet.mts.ru", (char *)"mts", (char *)"mts", SIM_CSD_RATE_14400);
     EXPECT_EQ(g_length, strlen("AT+CIPCSGP=0,\"internet.mts.ru\",\"mts\",\"mts\",14400\r\n"));
     EXPECT_STREQ(g_data, "AT+CIPCSGP=0,\"internet.mts.ru\",\"mts\",\"mts\",14400\r\n");
     
     simx_test_send("\r\nOK\r\n");
     EXPECT_EQ(reply.status, SIM300_OK);
     
-    simx_set_connection_mode(&reply, SIM_CSD, "internet.mts.ru", "mts", "mts", SIM_CSD_RATE_14400);
+    simx_set_connection_mode(&reply, SIM_CSD,(char *)"internet.mts.ru", (char *)"mts", (char *)"mts", SIM_CSD_RATE_14400);
     simx_test_send("\r\nERROR\r\n");
     EXPECT_EQ(reply.status, SIM300_ERROR);
     
-    simx_set_connection_mode(&reply, SIM_GPRS, "internet.mts.ru", "mts", "mts", SIM_CSD_RATE_14400);
+    simx_set_connection_mode(&reply, SIM_GPRS, (char *)"internet.mts.ru", (char *)"mts", (char *)"mts", SIM_CSD_RATE_14400);
     EXPECT_EQ(g_length, strlen("AT+CIPCSGP=1,\"internet.mts.ru\",\"mts\",\"mts\"\r\n"));
     EXPECT_STREQ(g_data, "AT+CIPCSGP=1,\"internet.mts.ru\",\"mts\",\"mts\"\r\n");
     
@@ -736,3 +741,17 @@ TEST(AutoTestSim900MSG, SIM_PDP_CALLBACK)
     simx_test_send("\r\n+PDP: DEACT\r\n");
     EXPECT_EQ(is_deact, 1);
 }
+
+TEST(AutoTestSim900Timeout, SIM_TIMEOUT)
+{
+    sim_reply_t reply;
+    
+    simx_test(&reply);
+    for(int i = 0; i < SIM900_TIMEOUT + 1; i++)
+    {
+        simx_tick_1ms();
+    }
+    simx_wait_reply();
+    EXPECT_EQ(reply.status, SIM300_TIMEOUT);
+}
+

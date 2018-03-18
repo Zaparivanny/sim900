@@ -3,9 +3,6 @@
 #include "stdio.h"
 #include "stdarg.h"
 
-#define SIM_RX_BUFFER 2048
-#define SIM_TX_BUFFER 2048
-
 //AT+CSMINS? sim status 0,1 - OK
 
 //https://electronics.stackexchange.com/questions/231224/posting-to-php-server-using-sim900-gprs-with-at-commands
@@ -147,6 +144,7 @@ typedef struct sim300_context_t
     int8_t sim_is_insert;
     int8_t gprs_is_attach;
     sim_cip_state_t cip_state;
+    volatile uint32_t time_ms;
 }sim300_context_t;
 
 #define CMD_STR(a) .cmdstr = a, .len = sizeof(a) - 1
@@ -300,6 +298,18 @@ sim_tcp_mode_t str_to_tcp_mode(uint8_t *str)
     return mode;
 }
 /*******************************************************/
+
+void simx_tick_1ms(void)
+{
+    if(g_context.is_receive == 0)
+    {
+        if(++g_context.time_ms > SIM900_TIMEOUT)
+        {
+            g_context.reply->status = SIM300_TIMEOUT;
+            simx_callback_timeout();
+        }
+    }
+}
 
 void simx_finished(sim300_context_t *context)
 {
@@ -796,6 +806,10 @@ void simx_wait_reply()
 {
     while(g_context.is_receive == 0)
     {
+        if(g_context.time_ms > SIM900_TIMEOUT)
+        {
+            g_context.reply->status = SIM300_TIMEOUT;
+        }
         
     }
     for(uint32_t i = 0; i < 500000; i++)
@@ -806,6 +820,7 @@ void simx_wait_reply()
 
 void sim300_send_no_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd)
 {
+    context->time_ms = 0;
     fsimx_receive = simx_receive_msg;
     sim_cnt = 0;
     context->is_receive = 0;
@@ -819,6 +834,7 @@ void sim300_send_no_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_c
 
 void sim300_send_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd)
 {
+    context->time_ms = 0;
     fsimx_receive = simx_receive_msg;
     sim_cnt = 0;
     context->is_receive = 0;
@@ -832,6 +848,7 @@ void sim300_send_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_
 
 void sim300_send_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd, const char * format, ... )
 {
+    context->time_ms = 0;
     fsimx_receive = simx_receive_msg;
     sim_cnt = 0;
     context->is_receive = 0;
@@ -855,6 +872,7 @@ void sim300_send_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_
 
 void sim300_send_at_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd, const char * format, ... )
 {
+    context->time_ms = 0;
     fsimx_receive = simx_receive_msg;
     sim_cnt = 0;
     context->is_receive = 0;
