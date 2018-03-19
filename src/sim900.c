@@ -429,6 +429,7 @@ void simx_rcv_dframe(sim300_context_t *context, uint8_t *buffer, uint16_t length
         if(memcmp(tmp, "CLOSE OK\r\n", len) == 0)
         {
             context->reply->status = SIM300_CLOSE_OK;
+            simx_callback_tcp_msg(SIM_TCP_CLOSED, buffer[0] - 0x30);
         }
         else
         {

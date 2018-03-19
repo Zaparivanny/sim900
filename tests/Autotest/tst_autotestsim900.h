@@ -56,6 +56,11 @@ void simx_callback_timeout()
     
 }
 
+void simx_callback_update()
+{
+    
+}
+
 TEST(AutoTestSim900, SIM_AT)
 {
     EXPECT_EQ(1, 1);
