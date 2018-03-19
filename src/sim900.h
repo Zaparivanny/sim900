@@ -5,7 +5,7 @@
 
 #define SIM_RX_BUFFER 2048
 #define SIM_TX_BUFFER 2048
-#define SIM900_TIMEOUT 5000
+#define SIM900_TIMEOUT 300000
 
 //+CMTI: "SM",1 - Unsolicited notification of the SMS arriving 
 
@@ -260,6 +260,7 @@ void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n);
 void simx_callback_sms_received(uint16_t number);
 void simx_callback_pdp_deact(void);
 void simx_callback_timeout(void);
+void simx_callback_update(void); // TODO DELETE
 
 void simx_test(sim_reply_t *reply);
 void simx_pin_is_required(sim_reply_t *reply); // AT+CPIN?

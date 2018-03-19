@@ -306,6 +306,7 @@ void simx_tick_1ms(void)
         if(++g_context.time_ms > SIM900_TIMEOUT)
         {
             g_context.reply->status = SIM300_TIMEOUT;
+            g_context.is_receive == 1;
             simx_callback_timeout();
         }
     }
@@ -705,7 +706,8 @@ void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t len
             {
                 simx_callback_tcp_msg(SIM_TCP_CONNECT_OK, n);
             }
-            else if(memcmp(tmpbuff, "CLOSED\r\n", len) == 0)
+            else if(memcmp(tmpbuff, "CLOSED\r\n", len) == 0 || 
+                    memcmp(tmpbuff, "CLOSE OK\r\n", len) == 0)
             {
                 simx_callback_tcp_msg(SIM_TCP_CLOSED, n);
             }
@@ -808,9 +810,11 @@ void simx_wait_reply()
     {
         if(g_context.time_ms > SIM900_TIMEOUT)
         {
+            g_context.is_receive == 1;
             g_context.reply->status = SIM300_TIMEOUT;
+            break;
         }
-        
+        simx_callback_update();
     }
     for(uint32_t i = 0; i < 500000; i++)
     {
