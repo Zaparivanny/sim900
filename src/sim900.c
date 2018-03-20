@@ -606,7 +606,7 @@ void simx_rcv_sdframe(struct sim300_context_t *context, uint8_t *buffer, uint16_
             {
                 for(uint32_t i = 0; i < 500000; i++)
                 {
-                    asm("nop");
+                    ___NOP;
                 }
                 simx_callback_send((uint8_t*)context->reply->user_pointer, context->reply->user_data);
             }
@@ -825,7 +825,7 @@ void simx_wait_reply()
     }
     for(uint32_t i = 0; i < 500000; i++)
     {
-        asm("nop");
+        ___NOP;
     }
 }
 

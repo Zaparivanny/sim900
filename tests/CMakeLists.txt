@@ -7,6 +7,8 @@ enable_language(CXX)
 
 set(CMAKE_C_FLAGS "-std=c99") 
 
+add_definitions(-D___NOP)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     set(CMAKE_CXX_FLAGS         "-Wall -Wno-unknown-pragmas -Wno-sign-compare -Woverloaded-virtual -Wwrite-strings -Wno-unused")
     set(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g3")
