@@ -415,10 +415,11 @@ TEST(AutoTestSim900, SIM_AT_CIPSEND)
     EXPECT_STREQ(g_data, msg);
     simx_test_send("\r\nSEND OK\r\n");
     EXPECT_EQ(reply.status, SIM300_SEND_OK);
-    /*
+    
     simx_tcp_send_data(&reply, (uint8_t*)msg, n, 0);
     EXPECT_EQ(g_length, strlen("AT+CIPSEND=4\r\n"));
     EXPECT_STREQ(g_data, "AT+CIPSEND=4\r\n");
+    simx_test_send("\r\n");
     simx_test_send("> ");
     EXPECT_EQ(g_length, n);
     EXPECT_STREQ(g_data, msg);
@@ -431,6 +432,7 @@ TEST(AutoTestSim900, SIM_AT_CIPSEND)
     simx_tcp_send_data(&reply, (uint8_t*)msg, n, 1);
     EXPECT_EQ(g_length, strlen("AT+CIPSEND=1,4\r\n"));
     EXPECT_STREQ(g_data, "AT+CIPSEND=1,4\r\n");
+    simx_test_send("\r\n");
     simx_test_send("> ");
     EXPECT_EQ(g_length, n);
     EXPECT_STREQ(g_data, msg);
@@ -440,11 +442,23 @@ TEST(AutoTestSim900, SIM_AT_CIPSEND)
     simx_tcp_send_data(&reply, (uint8_t*)msg, n, 2);
     EXPECT_EQ(g_length, strlen("AT+CIPSEND=2,4\r\n"));
     EXPECT_STREQ(g_data, "AT+CIPSEND=2,4\r\n");
+    simx_test_send("\r\n");
     simx_test_send("> ");
     EXPECT_EQ(g_length, n);
     EXPECT_STREQ(g_data, msg);
     simx_test_send("\r\n2, SEND FAIL\r\n");
-    EXPECT_EQ(reply.status, SIM300_SEND_FAIL);*/
+    EXPECT_EQ(reply.status, SIM300_SEND_FAIL);
+    
+    
+    simx_tcp_send_data(&reply, (uint8_t*)msg, n, 2);
+    EXPECT_EQ(g_length, strlen("AT+CIPSEND=2,4\r\n"));
+    EXPECT_STREQ(g_data, "AT+CIPSEND=2,4\r\n");
+    simx_test_send("\r\n");
+    simx_test_send("> ");
+    EXPECT_EQ(g_length, n);
+    EXPECT_STREQ(g_data, msg);
+    simx_test_send("\r\n54354356\r\n");
+    EXPECT_EQ(reply.status, SIM300_ERRFRAME);
     
 }
 

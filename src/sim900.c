@@ -181,6 +181,7 @@ simx_notif_spec_t simx_notif_spec[] =
     {{CMD_STR("+RECEIVE,"),   .f = _simx_notification_receive},
      {CMD_STR("+CMTI:"),      .f = _simx_notification_sms},
      {CMD_STR("+PDP: DEACT"), .f = _simx_notification_pdp_deact}};
+//TODO add: +CPIN: NOT READY
 
 sim_status_spec_t sim_status_spec[] = 
     {{CMD_STR("OK\r\n"), .status = SIM300_OK},
@@ -627,6 +628,11 @@ void simx_rcv_sdframe(struct sim300_context_t *context, uint8_t *buffer, uint16_
             else if(memcmp(tmp, "SEND FAIL\r\n", len) == 0)
             {
                 context->reply->status = SIM300_SEND_FAIL;
+                simx_finished(context);
+            }
+            else
+            {
+                context->reply->status = SIM300_ERRFRAME;
                 simx_finished(context);
             }
         }
