@@ -12,7 +12,7 @@ char* g_tcp_data;
 uint16_t g_tcp_length;
 uint8_t g_tcp_con;
 uint16_t g_sms_number;
-uint8_t is_deact;
+simx_notification_t g_notification;
 
 void simx_callback_sms_received(uint16_t number)
 {
@@ -38,9 +38,9 @@ void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n)
     g_tcp_con = n;
 }
 
-void simx_callback_pdp_deact()
+void simx_callback_message(simx_notification_t notification)
 {
-    is_deact = 1;
+    g_notification = notification;
 }
 
 void simx_test_send(const char* msg)
@@ -758,7 +758,48 @@ TEST(AutoTestSim900MSG, SIM_PDP_CALLBACK)
 {
     
     simx_test_send("\r\n+PDP: DEACT\r\n");
-    EXPECT_EQ(is_deact, 1);
+    EXPECT_EQ(g_notification, SIMX_PDP_DEACT);
+    
+    g_notification = SIMX_NTF_UNKNOWN;
+    
+    sim_reply_t reply;
+    simx_multiple_connection(&reply, 0);
+    simx_test_send("\r\nOK\r\n");
+    
+    char msg[] = "test";
+    int n = strlen(msg);
+    simx_tcp_send_data(&reply, (uint8_t*)msg, n, 0);
+    EXPECT_EQ(g_length, strlen("AT+CIPSEND=4\r\n"));
+    EXPECT_STREQ(g_data, "AT+CIPSEND=4\r\n");
+    
+    simx_test_send("\r\n+PDP: DEACT\r\n");
+    EXPECT_EQ(g_notification, SIMX_PDP_DEACT);
+    EXPECT_EQ(reply.status, SIM300_ERRFRAME);
+}
+
+TEST(AutoTestSim900MSG, SIM_CPIN_NOT_READY_CALLBACK)
+{
+    
+    simx_test_send("\r\n+CPIN: NOT READY\r\n");
+    EXPECT_EQ(g_notification, SIMX_CPIN_NOT_READY);
+    
+    g_notification = SIMX_NTF_UNKNOWN;
+    
+    sim_reply_t reply;
+    simx_multiple_connection(&reply, 0);
+    simx_test_send("\r\nOK\r\n");
+    
+    char msg[] = "test";
+    int n = strlen(msg);
+    simx_tcp_send_data(&reply, (uint8_t*)msg, n, 0);
+    EXPECT_EQ(g_length, strlen("AT+CIPSEND=4\r\n"));
+    EXPECT_STREQ(g_data, "AT+CIPSEND=4\r\n");
+    
+    simx_test_send("\r\n+CPIN: NOT READY\r\n");
+    EXPECT_EQ(g_notification, SIMX_CPIN_NOT_READY);
+    simx_test_send("\r\n+PDP: DEACT\r\n");
+    EXPECT_EQ(g_notification, SIMX_PDP_DEACT);
+    EXPECT_EQ(reply.status, SIM300_ERRFRAME);
 }
 
 TEST(AutoTestSim900Timeout, SIM_TIMEOUT)

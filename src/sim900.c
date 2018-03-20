@@ -58,6 +58,7 @@ void _simx_current_connection_status_parse(struct sim300_context_t *context, cha
 void _strchrcpy(char *src, str_tocken_t *tocken, uint8_t size);
 uint8_t str_to_ip(char *strip, sim_ip_t *ip);
 sim_tcp_mode_t str_to_tcp_mode(uint8_t *str);
+void simx_check_message(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 
 void simx_rcv_rframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void simx_rcv_wframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
@@ -76,7 +77,7 @@ void _simx_sms_read_resp(struct sim300_context_t *context, uint8_t *buffer, uint
 
 void _simx_notification_receive(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void _simx_notification_sms(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
-void _simx_notification_pdp_deact(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
+void _simx_notification(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 
 void simx_receive_tcp(struct sim300_context_t *context, uint8_t byte);
 void simx_receive_msg(struct sim300_context_t *context, uint8_t byte);
@@ -118,6 +119,7 @@ typedef struct
     char *cmdstr;
     uint8_t len;
     fcmd_frame f;
+    simx_notification_t ntf;
 }simx_notif_spec_t;
 
 typedef struct
@@ -145,6 +147,7 @@ typedef struct sim300_context_t
     int8_t gprs_is_attach;
     sim_cip_state_t cip_state;
     volatile uint32_t time_ms;
+    simx_notification_t simx_notification;
 }sim300_context_t;
 
 #define CMD_STR(a) .cmdstr = a, .len = sizeof(a) - 1
@@ -178,9 +181,11 @@ simx_cmd_spec_t simx_cmd_spec[] =
 
 
 simx_notif_spec_t simx_notif_spec[] = 
-    {{CMD_STR("+RECEIVE,"),   .f = _simx_notification_receive},
-     {CMD_STR("+CMTI:"),      .f = _simx_notification_sms},
-     {CMD_STR("+PDP: DEACT"), .f = _simx_notification_pdp_deact}};
+    {{CMD_STR("+RECEIVE,"),        .ntf = SIMX_NTF_UNKNOWN,    .f = _simx_notification_receive, },
+     {CMD_STR("+CMTI:"),           .ntf = SIMX_NTF_UNKNOWN,    .f = _simx_notification_sms},
+     {CMD_STR("+PDP: DEACT"),      .ntf = SIMX_PDP_DEACT,      .f = _simx_notification},
+     {CMD_STR("+CPIN: NOT READY"), .ntf = SIMX_CPIN_NOT_READY, .f = _simx_notification}};
+
 //TODO add: +CPIN: NOT READY
 
 sim_status_spec_t sim_status_spec[] = 
@@ -675,13 +680,32 @@ void _simx_notification_sms(sim300_context_t *context, uint8_t *buffer, uint16_t
     }
 }
 
-void _simx_notification_pdp_deact(struct sim300_context_t *context, uint8_t *buffer, uint16_t length)
+void _simx_notification(struct sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
-    simx_callback_pdp_deact();
+    simx_callback_message(context->simx_notification);
+}
+
+void simx_check_message(sim300_context_t *context, uint8_t *buffer, uint16_t length)
+{
+    for(int i = 0; i < sizeof(simx_notif_spec) / sizeof(simx_notif_spec[0]); i++)
+    {
+        if(memcmp(buffer, simx_notif_spec[i].cmdstr, simx_notif_spec[i].len) == 0)
+        {
+            if(simx_notif_spec[i].f)
+            {
+                context->simx_notification = simx_notif_spec[i].ntf;
+                simx_notif_spec[i].f(context, buffer, length);
+                context->simx_notification = SIMX_NTF_UNKNOWN;
+            }
+            return;
+        }
+    }
 }
 
 void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
+    simx_check_message(context, buffer, length);
+    
     if(context->is_receive == 1)
     {
         if(length > 2)
@@ -689,18 +713,6 @@ void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t len
             uint8_t n = 0;
             uint16_t len = length;
             char *tmpbuff = (char*)buffer;
-            
-            for(int i = 0; i < sizeof(simx_notif_spec) / sizeof(simx_notif_spec[0]); i++)
-            {
-                if(memcmp(buffer, simx_notif_spec[i].cmdstr, simx_notif_spec[i].len) == 0)
-                {
-                    if(simx_notif_spec[i].f)
-                    {
-                        simx_notif_spec[i].f(context, buffer, length);
-                    }
-                    return;
-                }
-            }
             
             if(context->mux)
             {
@@ -730,17 +742,19 @@ void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t len
         }
         return;
     }
-    
-    if(sizeof(simx_cmd_spec) / sizeof(simx_cmd_spec[0]) > context->cmd && context->cmd >= 0)
-    {
-        if(simx_cmd_spec[context->cmd].f_frm != NULL)
-        {
-            simx_cmd_spec[context->cmd].f_frm(context, buffer, length);
-        }
-    }
     else
     {
-        //TODO add custom responce
+        if(sizeof(simx_cmd_spec) / sizeof(simx_cmd_spec[0]) > context->cmd && context->cmd >= 0)
+        {
+            if(simx_cmd_spec[context->cmd].f_frm != NULL)
+            {
+                simx_cmd_spec[context->cmd].f_frm(context, buffer, length);
+            }
+        }
+        else
+        {
+            //TODO add custom responce
+        }
     }
 }
 

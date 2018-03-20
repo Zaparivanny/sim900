@@ -5,7 +5,7 @@ PROJECT(AutoTestSim900
 
 
 add_definitions(-DGTEST_LANGUAGE_CXX11)
-add_definitions(-D___NOP=asm("nop"))
+add_definitions(-D___NOP)
 
 find_package(Threads REQUIRED)
 

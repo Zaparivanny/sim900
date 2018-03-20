@@ -245,6 +245,13 @@ typedef struct
     uint16_t msg_length;
 }sim_sms_t;
 
+typedef enum
+{
+    SIMX_NTF_UNKNOWN = 0,
+    SIMX_PDP_DEACT = 1,
+    SIMX_CPIN_NOT_READY,
+}simx_notification_t;
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -258,7 +265,7 @@ void simx_callback_send(uint8_t *data, uint16_t length);
 void simx_callback_tcp_msg(sim_con_status_t con_status, uint8_t n);
 void simx_callback_tcp_data(uint8_t *data, uint16_t length, uint8_t n);
 void simx_callback_sms_received(uint16_t number);
-void simx_callback_pdp_deact(void);
+void simx_callback_message(simx_notification_t notification);
 void simx_callback_timeout(void);
 void simx_callback_update(void); // TODO DELETE
 
