@@ -312,7 +312,7 @@ void simx_tick_1ms(void)
         if(++g_context.time_ms > SIM900_TIMEOUT)
         {
             g_context.reply->status = SIM300_TIMEOUT;
-            g_context.is_receive == 1;
+            g_context.is_receive = 1;
             simx_callback_timeout();
         }
     }
@@ -330,8 +330,12 @@ void simx_finished(sim300_context_t *context)
 
 void simx_rcv_rframe(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
-    //printf("frame: %s\n", buffer);
-    //printf("frame: %s state: %i\n", buffer, context->state);
+    buffer[length] = 0;
+    //printf("frame: [%i]\n", length);
+    //printf("frame: [%s] state: [%i]\n", buffer, context->state);
+    //fflush(stdout);
+    volatile char *test_buff = buffer;
+    (void)test_buff;
 
     switch(context->state)
     {
@@ -368,7 +372,6 @@ void simx_rcv_rframe(sim300_context_t *context, uint8_t *buffer, uint16_t length
         //printf("msg: %s\n", buffer);
         if(length == 2)
         {
-            
             context->state = AT_CMD_ST_STATUS;
         }
         else
@@ -845,78 +848,106 @@ void simx_wait_reply()
 
 void sim300_send_no_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd)
 {
-    context->time_ms = 0;
-    fsimx_receive = simx_receive_msg;
-    sim_cnt = 0;
-    context->is_receive = 0;
-    context->state = AT_CMD_ST_RN;
-    context->reply = reply;
-    context->cmd = cmd;
-    reply->status = SIM300_NULL;
-    sprintf((char*)g_sim_tx_buffer, "%s\r\n", simx_cmd_spec[cmd].cmdstr);
-    simx_callback_send(g_sim_tx_buffer, simx_cmd_spec[cmd].len + 2);
+    if(context->is_receive == 1)
+    {
+        context->time_ms = 0;
+        fsimx_receive = simx_receive_msg;
+        sim_cnt = 0;
+        context->is_receive = 0;
+        context->state = AT_CMD_ST_RN;
+        context->reply = reply;
+        context->cmd = cmd;
+        reply->status = SIM300_NULL;
+        sprintf((char*)g_sim_tx_buffer, "%s\r\n", simx_cmd_spec[cmd].cmdstr);
+        simx_callback_send(g_sim_tx_buffer, simx_cmd_spec[cmd].len + 2);
+    }
+    else
+    {
+        reply->status = SIM300_BUSY;
+    }
 }
 
 void sim300_send_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd)
 {
-    context->time_ms = 0;
-    fsimx_receive = simx_receive_msg;
-    sim_cnt = 0;
-    context->is_receive = 0;
-    context->state = AT_CMD_ST_RN;
-    context->reply = reply;
-    context->cmd = cmd;
-    reply->status = SIM300_NULL;
-    sprintf((char*)g_sim_tx_buffer, "AT+%s\r\n", simx_cmd_spec[cmd].cmdstr);
-    simx_callback_send(g_sim_tx_buffer, simx_cmd_spec[cmd].len + 5);
+    if(context->is_receive == 1)
+    {
+        context->time_ms = 0;
+        fsimx_receive = simx_receive_msg;
+        sim_cnt = 0;
+        context->is_receive = 0;
+        context->state = AT_CMD_ST_RN;
+        context->reply = reply;
+        context->cmd = cmd;
+        reply->status = SIM300_NULL;
+        sprintf((char*)g_sim_tx_buffer, "AT+%s\r\n", simx_cmd_spec[cmd].cmdstr);
+        simx_callback_send(g_sim_tx_buffer, simx_cmd_spec[cmd].len + 5);
+    }
+    else
+    {
+        reply->status = SIM300_BUSY;
+    }
 }
 
 void sim300_send_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd, const char * format, ... )
 {
-    context->time_ms = 0;
-    fsimx_receive = simx_receive_msg;
-    sim_cnt = 0;
-    context->is_receive = 0;
-    context->state = AT_CMD_ST_RN;
-    context->reply = reply;
-    context->cmd = cmd;
-    reply->status = SIM300_NULL;
-    sprintf((char*)g_sim_tx_buffer, "%s", simx_cmd_spec[cmd].cmdstr);
-    uint16_t len = simx_cmd_spec[cmd].len;
-    va_list args;
-    va_start(args, format);
-    vsprintf((char*)g_sim_tx_buffer + len, format, args);
-    va_end(args);
-    len = strlen((const char*)g_sim_tx_buffer);
-    g_sim_tx_buffer[len++] = '\r';
-    g_sim_tx_buffer[len++] = '\n';
-    g_sim_tx_buffer[len] = 0;
-    
-    simx_callback_send(g_sim_tx_buffer, len);
+    if(context->is_receive == 1)
+    {
+        context->time_ms = 0;
+        fsimx_receive = simx_receive_msg;
+        sim_cnt = 0;
+        context->is_receive = 0;
+        context->state = AT_CMD_ST_RN;
+        context->reply = reply;
+        context->cmd = cmd;
+        reply->status = SIM300_NULL;
+        sprintf((char*)g_sim_tx_buffer, "%s", simx_cmd_spec[cmd].cmdstr);
+        uint16_t len = simx_cmd_spec[cmd].len;
+        va_list args;
+        va_start(args, format);
+        vsprintf((char*)g_sim_tx_buffer + len, format, args);
+        va_end(args);
+        len = strlen((const char*)g_sim_tx_buffer);
+        g_sim_tx_buffer[len++] = '\r';
+        g_sim_tx_buffer[len++] = '\n';
+        g_sim_tx_buffer[len] = 0;
+        
+        simx_callback_send(g_sim_tx_buffer, len);
+    }
+    else
+    {
+        reply->status = SIM300_BUSY;
+    }
 }
 
 void sim300_send_at_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd, const char * format, ... )
 {
-    context->time_ms = 0;
-    fsimx_receive = simx_receive_msg;
-    sim_cnt = 0;
-    context->is_receive = 0;
-    context->state = AT_CMD_ST_RN;
-    context->reply = reply;
-    context->cmd = cmd;
-    reply->status = SIM300_NULL;
-    sprintf((char*)g_sim_tx_buffer, "AT+%s", simx_cmd_spec[cmd].cmdstr);
-    uint16_t len = simx_cmd_spec[cmd].len + 3;
-    va_list args;
-    va_start(args, format);
-    vsprintf((char*)(g_sim_tx_buffer + len), format, args);
-    va_end(args);
-    len = strlen((char*)g_sim_tx_buffer);
-    g_sim_tx_buffer[len++] = '\r';
-    g_sim_tx_buffer[len++] = '\n';
-    g_sim_tx_buffer[len] = 0;
-    
-    simx_callback_send(g_sim_tx_buffer, len);
+    if(context->is_receive == 1)
+    {
+        context->time_ms = 0;
+        fsimx_receive = simx_receive_msg;
+        sim_cnt = 0;
+        context->is_receive = 0;
+        context->state = AT_CMD_ST_RN;
+        context->reply = reply;
+        context->cmd = cmd;
+        reply->status = SIM300_NULL;
+        sprintf((char*)g_sim_tx_buffer, "AT+%s", simx_cmd_spec[cmd].cmdstr);
+        uint16_t len = simx_cmd_spec[cmd].len + 3;
+        va_list args;
+        va_start(args, format);
+        vsprintf((char*)(g_sim_tx_buffer + len), format, args);
+        va_end(args);
+        len = strlen((char*)g_sim_tx_buffer);
+        g_sim_tx_buffer[len++] = '\r';
+        g_sim_tx_buffer[len++] = '\n';
+        g_sim_tx_buffer[len] = 0;
+        
+        simx_callback_send(g_sim_tx_buffer, len);
+    }
+    else
+    {
+        reply->status = SIM300_BUSY;
+    }
 }
 
 void simx_test(sim_reply_t *reply)
@@ -943,6 +974,7 @@ void _simx_pin_is_required_resp(sim300_context_t *context, uint8_t *buffer, uint
         }
     }
     context->pin_is_required = SIM_PIN_UNKNOW;
+    
 }
 
 void simx_pin_is_required(sim_reply_t *reply)

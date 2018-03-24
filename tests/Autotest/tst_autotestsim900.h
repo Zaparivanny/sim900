@@ -14,6 +14,14 @@ uint8_t g_tcp_con;
 uint16_t g_sms_number;
 simx_notification_t g_notification;
 
+void set_timeout()
+{
+    for(int i = 0; i < SIM900_TIMEOUT + 1; i++)
+    {
+        simx_tick_1ms();
+    }
+}
+
 void simx_callback_sms_received(uint16_t number)
 {
     g_sms_number = number;
@@ -109,21 +117,31 @@ TEST(AutoTestSim900, SIM_AT_CPIN)
         simx_test_send("OK\r\n");
         EXPECT_EQ(reply.status, SIM300_OK);
         EXPECT_EQ(sim_pin_required(), i);
+        EXPECT_EQ(simx_is_receive(), 1);
     }
     
     simx_pin_is_required(&reply);
-    simx_test_send("\r\n+CPIN: NO_VALID\r\n");;
+    simx_test_send("\r\n+CPIN: NO_VALID\r\n\r\n");
     simx_test_send("OK\r\n");
-    EXPECT_EQ(simx_is_receive(), 0);
+    EXPECT_EQ(simx_is_receive(), 1);
     //EXPECT_EQ(reply.status, SIM300_ERRFRAME);
     //EXPECT_EQ(pin_required(), SIM_PIN_UNKNOW);
     
     simx_pin_is_required(&reply);
-    simx_test_send("\r\n+CPIN: NO_VALID\r\n\r\n");;
+    simx_test_send("\r\n+CPIN: NO_VALID\r\n\r\n");
     simx_test_send("OK\r\n");
+    EXPECT_EQ(simx_is_receive(), 1);
     EXPECT_EQ(reply.status, SIM300_OK);
     EXPECT_EQ(sim_pin_required(), SIM_PIN_UNKNOW);
     
+    
+    simx_pin_is_required(&reply);
+    simx_test_send("\r\n+CPIN: NO_VALID\r\n");
+    simx_test_send("OK\r\n");
+    set_timeout();
+    EXPECT_EQ(simx_is_receive(), 1); // timeout
+    
+    EXPECT_EQ(reply.status, SIM300_TIMEOUT);
 }
 
 TEST(AutoTestSim900, SIM_AT_CREG)
@@ -807,11 +825,20 @@ TEST(AutoTestSim900Timeout, SIM_TIMEOUT)
     sim_reply_t reply;
     
     simx_test(&reply);
-    for(int i = 0; i < SIM900_TIMEOUT + 1; i++)
-    {
-        simx_tick_1ms();
-    }
+    set_timeout();
     simx_wait_reply();
     EXPECT_EQ(reply.status, SIM300_TIMEOUT);
 }
 
+TEST(AutoTestSim900Timeout, SIM_BUSY)
+{
+    sim_reply_t reply1;
+    sim_reply_t reply2;
+    
+    simx_test(&reply1);
+    simx_test(&reply2);
+    EXPECT_EQ(reply2.status, SIM300_BUSY);
+    simx_test_send("\r\nOK\r\n");
+    
+    EXPECT_EQ(reply1.status, SIM300_OK);
+}
