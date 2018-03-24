@@ -257,7 +257,7 @@ typedef enum
 #endif
  
 void simx_receive(uint8_t byte);
-void simx_wait_reply(void);
+void simx_wait_reply(sim_reply_t *reply);
 uint8_t simx_is_receive(void);
 void simx_tick_1ms(void);
 

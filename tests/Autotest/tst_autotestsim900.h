@@ -826,7 +826,7 @@ TEST(AutoTestSim900Timeout, SIM_TIMEOUT)
     
     simx_test(&reply);
     set_timeout();
-    simx_wait_reply();
+    simx_wait_reply(&reply);
     EXPECT_EQ(reply.status, SIM300_TIMEOUT);
 }
 

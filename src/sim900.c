@@ -828,8 +828,13 @@ uint8_t simx_is_receive()
     return g_context.is_receive;
 }
 
-void simx_wait_reply()
+void simx_wait_reply(sim_reply_t *reply)
 {
+    if(reply->status == SIM300_BUSY || reply != g_context.reply)
+    {
+        return;
+    }
+    
     while(g_context.is_receive == 0)
     {
         if(g_context.time_ms > SIM900_TIMEOUT)
