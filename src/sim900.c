@@ -44,6 +44,8 @@ typedef struct
     uint8_t size;
 }str_tocken_t;
 
+static inline struct sim300_context_t *_gsm_context(void);
+
 char* str_quotes(const char *src, char *dst, uint16_t maxlen);
 void simx_finished(struct sim300_context_t *context);
 void _simx_tcp_head_enable_finished(struct sim300_context_t *context);
@@ -85,11 +87,7 @@ void simx_receive_msg(struct sim300_context_t *context, uint8_t byte);
 void (*fsimx_receive)(struct sim300_context_t *context, uint8_t byte) = simx_receive_msg;
 
 
-uint8_t g_sim_rx_buffer[SIM_RX_BUFFER];
-uint8_t g_sim_tx_buffer[SIM_TX_BUFFER];
-uint8_t sim_cnt;
-uint16_t g_receive_len;
-uint8_t g_receive_ncon;
+
 
 typedef enum
 {
@@ -148,6 +146,12 @@ typedef struct sim300_context_t
     sim_cip_state_t cip_state;
     volatile uint32_t time_ms;
     simx_notification_t simx_notification;
+    
+    uint8_t sim_cnt;
+    uint16_t receive_len;
+    uint8_t receive_ncon;
+    uint8_t rx_buffer[SIM_RX_BUFFER];
+    uint8_t tx_buffer[SIM_TX_BUFFER];
 }sim300_context_t;
 
 #define CMD_STR(a) .cmdstr = a, .len = sizeof(a) - 1
@@ -203,7 +207,13 @@ sim_status_spec_t sim_status_spec[] =
 
 static const char* te_chasters[] = {"GSM", "UCS2", "IRA", "HEX", "PCCP", "PCDN", "8859-1"};
 
-sim300_context_t g_context = {.pin_is_required = SIM_PIN_UNKNOW, .is_receive = 1, .cmd = NO_AT, .mux = 0};
+
+
+static inline sim300_context_t *_gsm_context()
+{
+    static sim300_context_t gsm_context = {.pin_is_required = SIM_PIN_UNKNOW, .is_receive = 1, .cmd = NO_AT, .mux = 0};
+    return &gsm_context;
+}
 
 void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t length);
 
@@ -307,12 +317,13 @@ sim_tcp_mode_t str_to_tcp_mode(uint8_t *str)
 
 void simx_tick_1ms(void)
 {
-    if(g_context.is_receive == 0)
+    sim300_context_t *context = _gsm_context();
+    if(context->is_receive == 0)
     {
-        if(++g_context.time_ms > SIM900_TIMEOUT)
+        if(++context->time_ms > SIM900_TIMEOUT)
         {
-            g_context.reply->status = SIM300_TIMEOUT;
-            g_context.is_receive = 1;
+            context->reply->status = SIM300_TIMEOUT;
+            context->is_receive = 1;
             simx_callback_timeout();
         }
     }
@@ -492,8 +503,8 @@ void simx_rcv_wframe(sim300_context_t *context, uint8_t *buffer, uint16_t length
         } 
         else if(buffer[0] == '>')
         {
-            sprintf((char*)g_sim_tx_buffer, "%s%c", g_context.cmd_data, 0x1A); //TODO KOSTIL
-            simx_callback_send(g_sim_tx_buffer, strlen((const char*)g_sim_tx_buffer));
+            sprintf((char*)context->tx_buffer, "%s%c", context->cmd_data, 0x1A); //TODO KOSTIL
+            simx_callback_send(context->tx_buffer, strlen((const char*)context->tx_buffer));
         }
         else
         {
@@ -657,8 +668,8 @@ void _simx_notification_receive(sim300_context_t *context, uint8_t *buffer, uint
         uint8_t n = sscanf((char const*)buffer + 9, "%i,%i", &desc, &size);
         if(n == 2)
         {
-            g_receive_ncon = desc;
-            g_receive_len = size;
+            context->receive_ncon = desc;
+            context->receive_len = size;
             fsimx_receive = simx_receive_tcp;
         }
     }
@@ -763,54 +774,54 @@ void simx_receive_frame(sim300_context_t *context, uint8_t *buffer, uint16_t len
 
 void simx_receive_tcp(sim300_context_t *context, uint8_t byte)
 {
-    g_sim_rx_buffer[sim_cnt] = byte;
-    if(++sim_cnt == g_receive_len) //todo overflow
+    context->rx_buffer[context->sim_cnt] = byte;
+    if(++context->sim_cnt == context->receive_len) //todo overflow
     {
-        g_sim_rx_buffer[sim_cnt] = 0;
-        simx_callback_tcp_data(g_sim_rx_buffer, g_receive_len, g_receive_ncon);
-        g_receive_len = 0;
-        g_receive_ncon = 0;
+        context->rx_buffer[context->sim_cnt] = 0;
+        simx_callback_tcp_data(context->rx_buffer, context->receive_len, context->receive_ncon);
+        context->receive_len = 0;
+        context->receive_ncon = 0;
         fsimx_receive = simx_receive_msg;
-        sim_cnt = 0;
+        context->sim_cnt = 0;
         //callback
     }
 }
 
 void simx_receive_msg(sim300_context_t *context, uint8_t byte)
 {
-    g_sim_rx_buffer[sim_cnt] = byte;
-    sim_cnt++;
+    context->rx_buffer[context->sim_cnt] = byte;
+    context->sim_cnt++;
     
     
     if(simx_cmd_spec[context->cmd].f_frm == simx_rcv_wframe || 
        simx_cmd_spec[context->cmd].f_frm == simx_rcv_sdframe)
     {
-        if(g_sim_rx_buffer[0] == '>' && sim_cnt == 2)
+        if(context->rx_buffer[0] == '>' && context->sim_cnt == 2)
         {
-            g_sim_rx_buffer[sim_cnt] = 0;
-            simx_receive_frame(context, g_sim_rx_buffer, sim_cnt);
-            sim_cnt = 0;
+            context->rx_buffer[context->sim_cnt] = 0;
+            simx_receive_frame(context, context->rx_buffer, context->sim_cnt);
+            context->sim_cnt = 0;
         }
     }
     
-    if(g_sim_rx_buffer[sim_cnt - 2] == '\r' && 
-       g_sim_rx_buffer[sim_cnt - 1] == '\n' )
+    if(context->rx_buffer[context->sim_cnt - 2] == '\r' && 
+       context->rx_buffer[context->sim_cnt - 1] == '\n' )
     {
-        g_sim_rx_buffer[sim_cnt] = 0;
+        context->rx_buffer[context->sim_cnt] = 0;
         //printf("rec: [%s]\n", g_sim_rx_buffer);
-        simx_receive_frame(context, g_sim_rx_buffer, sim_cnt);
-        sim_cnt = 0;
+        simx_receive_frame(context, context->rx_buffer, context->sim_cnt);
+        context->sim_cnt = 0;
     }
     else if(context->mux == 0 && context->ciphead && 
-            context->is_receive == 1 && g_sim_rx_buffer[sim_cnt - 1] == ':')
+            context->is_receive == 1 && context->rx_buffer[context->sim_cnt - 1] == ':')
     {
-        if(memcmp(g_sim_rx_buffer, "+IPD,", 5) == 0)
+        if(memcmp(context->rx_buffer, "+IPD,", 5) == 0)
         {
             int size;
-            sscanf((char*)(g_sim_rx_buffer + 5), "%i", &size);
-            g_receive_ncon = 0;
-            g_receive_len = size;
-            sim_cnt = 0;
+            sscanf((char*)(context->rx_buffer + 5), "%i", &size);
+            context->receive_ncon = 0;
+            context->receive_len = size;
+            context->sim_cnt = 0;
             fsimx_receive = simx_receive_tcp;
         }
     }
@@ -818,29 +829,32 @@ void simx_receive_msg(sim300_context_t *context, uint8_t byte)
 
 void simx_receive(uint8_t byte)
 {
-    fsimx_receive(&g_context, byte);
+    sim300_context_t *context = _gsm_context();
+    fsimx_receive(context, byte);
 }
 
 
 
 uint8_t simx_is_receive()
 {
-    return g_context.is_receive;
+    sim300_context_t *context = _gsm_context();
+    return context->is_receive;
 }
 
 void simx_wait_reply(sim_reply_t *reply)
 {
-    if(reply->status == SIM300_BUSY || reply != g_context.reply)
+    sim300_context_t *context = _gsm_context();
+    if(reply->status == SIM300_BUSY || reply != context->reply)
     {
         return;
     }
     
-    while(g_context.is_receive == 0)
+    while(context->is_receive == 0)
     {
-        if(g_context.time_ms > SIM900_TIMEOUT)
+        if(context->time_ms > SIM900_TIMEOUT)
         {
-            g_context.is_receive == 1;
-            g_context.reply->status = SIM300_TIMEOUT;
+            context->is_receive == 1;
+            context->reply->status = SIM300_TIMEOUT;
             break;
         }
         simx_callback_update();
@@ -857,14 +871,14 @@ void sim300_send_no_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_c
     {
         context->time_ms = 0;
         fsimx_receive = simx_receive_msg;
-        sim_cnt = 0;
+        context->sim_cnt = 0;
         context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
         reply->status = SIM300_NULL;
-        sprintf((char*)g_sim_tx_buffer, "%s\r\n", simx_cmd_spec[cmd].cmdstr);
-        simx_callback_send(g_sim_tx_buffer, simx_cmd_spec[cmd].len + 2);
+        sprintf((char*)context->tx_buffer, "%s\r\n", simx_cmd_spec[cmd].cmdstr);
+        simx_callback_send(context->tx_buffer, simx_cmd_spec[cmd].len + 2);
     }
     else
     {
@@ -878,14 +892,14 @@ void sim300_send_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_
     {
         context->time_ms = 0;
         fsimx_receive = simx_receive_msg;
-        sim_cnt = 0;
+        context->sim_cnt = 0;
         context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
         reply->status = SIM300_NULL;
-        sprintf((char*)g_sim_tx_buffer, "AT+%s\r\n", simx_cmd_spec[cmd].cmdstr);
-        simx_callback_send(g_sim_tx_buffer, simx_cmd_spec[cmd].len + 5);
+        sprintf((char*)context->tx_buffer, "AT+%s\r\n", simx_cmd_spec[cmd].cmdstr);
+        simx_callback_send(context->tx_buffer, simx_cmd_spec[cmd].len + 5);
     }
     else
     {
@@ -899,24 +913,24 @@ void sim300_send_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_
     {
         context->time_ms = 0;
         fsimx_receive = simx_receive_msg;
-        sim_cnt = 0;
+        context->sim_cnt = 0;
         context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
         reply->status = SIM300_NULL;
-        sprintf((char*)g_sim_tx_buffer, "%s", simx_cmd_spec[cmd].cmdstr);
+        sprintf((char*)context->tx_buffer, "%s", simx_cmd_spec[cmd].cmdstr);
         uint16_t len = simx_cmd_spec[cmd].len;
         va_list args;
         va_start(args, format);
-        vsprintf((char*)g_sim_tx_buffer + len, format, args);
+        vsprintf((char*)context->tx_buffer + len, format, args);
         va_end(args);
-        len = strlen((const char*)g_sim_tx_buffer);
-        g_sim_tx_buffer[len++] = '\r';
-        g_sim_tx_buffer[len++] = '\n';
-        g_sim_tx_buffer[len] = 0;
+        len = strlen((const char*)context->tx_buffer);
+        context->tx_buffer[len++] = '\r';
+        context->tx_buffer[len++] = '\n';
+        context->tx_buffer[len] = 0;
         
-        simx_callback_send(g_sim_tx_buffer, len);
+        simx_callback_send(context->tx_buffer, len);
     }
     else
     {
@@ -930,24 +944,24 @@ void sim300_send_at_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_c
     {
         context->time_ms = 0;
         fsimx_receive = simx_receive_msg;
-        sim_cnt = 0;
+        context->sim_cnt = 0;
         context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
         reply->status = SIM300_NULL;
-        sprintf((char*)g_sim_tx_buffer, "AT+%s", simx_cmd_spec[cmd].cmdstr);
+        sprintf((char*)context->tx_buffer, "AT+%s", simx_cmd_spec[cmd].cmdstr);
         uint16_t len = simx_cmd_spec[cmd].len + 3;
         va_list args;
         va_start(args, format);
-        vsprintf((char*)(g_sim_tx_buffer + len), format, args);
+        vsprintf((char*)(context->tx_buffer + len), format, args);
         va_end(args);
-        len = strlen((char*)g_sim_tx_buffer);
-        g_sim_tx_buffer[len++] = '\r';
-        g_sim_tx_buffer[len++] = '\n';
-        g_sim_tx_buffer[len] = 0;
+        len = strlen((char*)context->tx_buffer);
+        context->tx_buffer[len++] = '\r';
+        context->tx_buffer[len++] = '\n';
+        context->tx_buffer[len] = 0;
         
-        simx_callback_send(g_sim_tx_buffer, len);
+        simx_callback_send(context->tx_buffer, len);
     }
     else
     {
@@ -957,7 +971,8 @@ void sim300_send_at_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_c
 
 void simx_test(sim_reply_t *reply)
 {
-    sim300_send_no_at_cmd(&g_context, reply, AT_AT);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_no_at_cmd(context, reply, AT_AT);
 }
 
 void _simx_pin_is_required_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
@@ -984,7 +999,8 @@ void _simx_pin_is_required_resp(sim300_context_t *context, uint8_t *buffer, uint
 
 void simx_pin_is_required(sim_reply_t *reply)
 {
-    sim300_send_at_cmd(&g_context, reply, AT_CPINR);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd(context, reply, AT_CPINR);
 }
 
 void _simx_network_registration_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
@@ -1010,7 +1026,8 @@ void _simx_network_registration_resp(sim300_context_t *context, uint8_t *buffer,
 
 void simx_network_registration(sim_reply_t *reply)
 {
-    sim300_send_at_cmd(&g_context, reply, AT_CREG);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd(context, reply, AT_CREG);
 }
 
 void _simx_sim_inserted_status_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
@@ -1038,7 +1055,8 @@ void _simx_sim_inserted_status_resp(sim300_context_t *context, uint8_t *buffer, 
 
 void simx_sim_inserted_status(sim_reply_t *reply)
 {
-    sim300_send_at_cmd(&g_context, reply, AT_CSMINS);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd(context, reply, AT_CSMINS);
 }
 
 void _simx_signal_quality_report_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
@@ -1057,8 +1075,9 @@ void _simx_signal_quality_report_resp(sim300_context_t *context, uint8_t *buffer
 
 void simx_signal_quality_report(sim_reply_t *reply, uint8_t *lvl)
 {
+    sim300_context_t *context = _gsm_context();
     reply->user_pointer = lvl;
-    sim300_send_at_cmd(&g_context, reply, AT_CSQ);
+    sim300_send_at_cmd(context, reply, AT_CSQ);
 }
 
 void _simx_set_TE_character_finished(sim300_context_t *context)
@@ -1068,33 +1087,36 @@ void _simx_set_TE_character_finished(sim300_context_t *context)
 
 void simx_set_TE_character(sim_reply_t *reply, sim_TE_chaster_t chaster)
 {
+    sim300_context_t *context = _gsm_context();
     fcmd_finished = _simx_set_TE_character_finished;
     reply->user_data = chaster;
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CSCS, "\"%s\"", te_chasters[chaster]);
+    sim300_send_at_cmd_vp(context, reply, AT_CSCS, "\"%s\"", te_chasters[chaster]);
 }
 
 void simx_call_to_dial_number(sim_reply_t *reply, char *number)
 {
-    sim300_send_cmd_vp(&g_context, reply, ATD, "%s", number);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_cmd_vp(context, reply, ATD, "%s", number);
 }
 
 void simx_switch_mode(sim_reply_t *reply, sim_pdp_mode_t mode)
 {
+    sim300_context_t *context = _gsm_context();
     if(mode == SIM_DATA_MODE)
     {
-        sim300_send_no_at_cmd(&g_context, reply, ATO);
+        sim300_send_no_at_cmd(context, reply, ATO);
     }
     else
     {
         fsimx_receive = simx_receive_msg;
-        sim_cnt = 0;
-        g_context.is_receive = 0;
-        g_context.state = AT_CMD_ST_RN;
-        g_context.reply = reply;
-        g_context.cmd = PPP;
+        context->sim_cnt = 0;
+        context->is_receive = 0;
+        context->state = AT_CMD_ST_RN;
+        context->reply = reply;
+        context->cmd = PPP;
         reply->status = SIM300_NULL;
-        sprintf((char*)g_sim_tx_buffer, "+++");
-        simx_callback_send(g_sim_tx_buffer, 3);
+        sprintf((char*)context->tx_buffer, "+++");
+        simx_callback_send(context->tx_buffer, 3);
     }
 }
 
@@ -1122,47 +1144,54 @@ void _simx_is_attach_to_GPRS_resp(sim300_context_t *context, uint8_t *buffer, ui
 
 void simx_is_attach_to_GPRS(sim_reply_t *reply)
 {
-    sim300_send_at_cmd(&g_context, reply, AT_CGATT);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd(context, reply, AT_CGATT);
 }
 
 
 void simx_deactivate_gprs_pdp(sim_reply_t *reply)
 {
-    sim300_send_at_cmd(&g_context, reply, AT_CIPSHUT);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd(context, reply, AT_CIPSHUT);
 }
 
 void simx_set_gprs_config(sim_reply_t *reply, const char* apn, const char* username, const char* pass)
 {
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CSTT, "\"%s\",\"%s\",\"%s\"", apn, username, pass);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd_vp(context, reply, AT_CSTT, "\"%s\",\"%s\",\"%s\"", apn, username, pass);
 }
 
 void simx_bring_up_wireless_connection(sim_reply_t *reply)
 {
-    sim300_send_at_cmd(&g_context, reply, AT_CIICR);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd(context, reply, AT_CIICR);
 }
 
 void simx_get_local_ip(sim_reply_t *reply, sim_ip_t *ip)
 {
+    sim300_context_t *context = _gsm_context();
     reply->user_pointer = ip;
-    sim300_send_at_cmd(&g_context, reply, AT_CIFSR);
+    sim300_send_at_cmd(context, reply, AT_CIFSR);
 }
 
 void simx_define_pdp_context(sim_reply_t *reply, uint8_t cid, char *pdp_type, char *apn)
 {
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CGDCONT, "%i,\"%s\",\"%s\"", cid, pdp_type, apn);
+    sim300_context_t *context = _gsm_context();
+    sim300_send_at_cmd_vp(context, reply, AT_CGDCONT, "%i,\"%s\",\"%s\"", cid, pdp_type, apn);
 }
 
 void simx_set_connection_mode(sim_reply_t *reply, sim_connection_mode_t mode, char *apn, 
                               char *user_name, char *pass, sim_csd_rate_t rate)
 {
+    sim300_context_t *context = _gsm_context();
     if(mode == SIM_CSD)
     {
-        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPCSGP, 
+        sim300_send_at_cmd_vp(context, reply, AT_CIPCSGP, 
                               "%i,\"%s\",\"%s\",\"%s\",%i", mode, apn, user_name, pass, rate);
     }
     else if(mode == SIM_GPRS)
     {
-        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPCSGP, 
+        sim300_send_at_cmd_vp(context, reply, AT_CIPCSGP, 
                               "%i,\"%s\",\"%s\",\"%s\"", mode, apn, user_name, pass);
     }
     else
@@ -1224,7 +1253,7 @@ void _simx_current_connection_status_parse(sim300_context_t *context, char *buff
     }
     if(n1 == 7)
     {
-        g_context.is_receive = 1;
+        context->is_receive = 1;
     }
 }*/
 
@@ -1299,7 +1328,7 @@ void _simx_current_connection_status_parse(sim300_context_t *context, char *buff
     
     if(n1 == 7)
     {
-        g_context.is_receive = 1;
+        context->is_receive = 1;
     }
 }
 
@@ -1325,17 +1354,17 @@ void _simx_current_connection_status_resp(sim300_context_t *context, uint8_t *bu
                 if(memcmp(buffer + 7, cipstate[i], strlen(cipstate[i])) == 0)
                 {
                     context->cip_state = cip_state[i];
-                    if(g_context.mux == 0)
+                    if(context->mux == 0)
                     {
-                        g_context.is_receive = 1;
+                        context->is_receive = 1;
                     }
                     return;
                 }
             }
             context->cip_state = (sim_cip_state_t) - 1;
-            if(g_context.mux == 0)
+            if(context->mux == 0)
             {
-                g_context.is_receive = 1;
+                context->is_receive = 1;
             }
         }
         else
@@ -1347,56 +1376,61 @@ void _simx_current_connection_status_resp(sim300_context_t *context, uint8_t *bu
 
 void simx_current_connection_status(sim_reply_t *reply, sim_cipstatus_t *cipstatus, uint8_t size)
 {
+    sim300_context_t *context = _gsm_context();
     reply->user_data = size;
     reply->user_pointer = cipstatus;
-    sim300_send_at_cmd(&g_context, reply, AT_CIPSTATUS);
+    sim300_send_at_cmd(context, reply, AT_CIPSTATUS);
 }
 
 void simx_multiple_connection(sim_reply_t *reply, uint8_t mode)
 {
+    sim300_context_t *context = _gsm_context();
     //TODO assert(); mode
     fcmd_finished = _simx_multiple_connection_finished;
     reply->user_data = mode;
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CIPMUX, "%i", mode);
+    sim300_send_at_cmd_vp(context, reply, AT_CIPMUX, "%i", mode);
 }
 
 void simx_tcp_connect(sim_reply_t *reply, sim_tcp_mode_t tcp_mode, char *address, uint16_t port, int n)
 {
+    sim300_context_t *context = _gsm_context();
     char *mode[] = {"TCP", "UDP"};
     uint8_t index = tcp_mode == SIM_TCP ? 0 : 1;
     //TODO assert n = 0..7
     
-    if(g_context.mux)
+    if(context->mux)
     {
-        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPSTART, "%i,\"%s\",\"%s\",%i", 
+        sim300_send_at_cmd_vp(context, reply, AT_CIPSTART, "%i,\"%s\",\"%s\",%i", 
                             n, mode[index], address, port);
     }
     else
     {
-        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPSTART, "\"%s\",\"%s\",%i", 
+        sim300_send_at_cmd_vp(context, reply, AT_CIPSTART, "\"%s\",\"%s\",%i", 
                             mode[index], address, port);
     }
 }
 
 void simx_tcp_send_data(sim_reply_t *reply, uint8_t *data, uint16_t length, int n)
 {
+    sim300_context_t *context = _gsm_context();
     reply->user_pointer = data;
     reply->user_data = length;
-    if(g_context.mux)
+    if(context->mux)
     {
-        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPSEND, "%i,%i", n, length);
+        sim300_send_at_cmd_vp(context, reply, AT_CIPSEND, "%i,%i", n, length);
     }
     else
     {
-        sim300_send_at_cmd_vp(&g_context, reply, AT_CIPSEND, "%i", length);
+        sim300_send_at_cmd_vp(context, reply, AT_CIPSEND, "%i", length);
     }
 }
 
 void simx_tcp_close(sim_reply_t *reply, int n)
 {
-    g_context.mux
-        ? sim300_send_at_cmd_vp(&g_context, reply, AT_CIPCLOSE, "%i,%i", n, 0)
-        : sim300_send_at_cmd_vp(&g_context, reply, AT_CIPCLOSE, "%i", 0);
+    sim300_context_t *context = _gsm_context();
+    context->mux
+        ? sim300_send_at_cmd_vp(context, reply, AT_CIPCLOSE, "%i,%i", n, 0)
+        : sim300_send_at_cmd_vp(context, reply, AT_CIPCLOSE, "%i", 0);
 }
 
 void _simx_tcp_head_enable_finished(sim300_context_t *context)
@@ -1409,24 +1443,27 @@ void _simx_tcp_head_enable_finished(sim300_context_t *context)
 
 void simx_tcp_head_enable(sim_reply_t *reply, uint8_t is_enable)
 {
+    sim300_context_t *context = _gsm_context();
     is_enable = is_enable ? 1 : 0;
-    g_context.reply = reply;
-    g_context.reply->user_data = is_enable;
+    context->reply = reply;
+    context->reply->user_data = is_enable;
     fcmd_finished = _simx_tcp_head_enable_finished;
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CIPHEAD, "%i", is_enable);
+    sim300_send_at_cmd_vp(context, reply, AT_CIPHEAD, "%i", is_enable);
 }
 
 void simx_sms_mode(sim_reply_t *reply, sim_sms_mode_t mode)
 {
+    sim300_context_t *context = _gsm_context();
     //TODO assert mode
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGF, "%i", mode);
+    sim300_send_at_cmd_vp(context, reply, AT_CMGF, "%i", mode);
 }
 
 void simx_send_sms(sim_reply_t *reply, const char *number, const char* msg)
 {
+    sim300_context_t *context = _gsm_context();
     //todo validate number
-    g_context.cmd_data = (char*)msg;
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGS, "\"%s\"", number);
+    context->cmd_data = (char*)msg;
+    sim300_send_at_cmd_vp(context, reply, AT_CMGS, "\"%s\"", number);
 }
 
 void _simx_sms_read_resp(struct sim300_context_t *context, uint8_t *buffer, uint16_t length)
@@ -1454,36 +1491,43 @@ void _simx_sms_read_resp(struct sim300_context_t *context, uint8_t *buffer, uint
 
 void simx_read_sms(sim_reply_t *reply, sim_sms_t *sim_sms, uint16_t n)
 {
+    sim300_context_t *context = _gsm_context();
     reply->user_pointer = sim_sms;
-    sim300_send_at_cmd_vp(&g_context, reply, AT_CMGR, "%i", n);
+    sim300_send_at_cmd_vp(context, reply, AT_CMGR, "%i", n);
 }
 
 sim_pin_status_t sim_pin_required()
 {
-    return g_context.pin_is_required;
+    sim300_context_t *context = _gsm_context();
+    return context->pin_is_required;
 }
 
 sim_reg_network_t sim_network_registration()
 {
-    return g_context.network_reg;
+    sim300_context_t *context = _gsm_context();
+    return context->network_reg;
 }
 
 int8_t sim_is_inserted()
 {
-    return g_context.sim_is_insert;
+    sim300_context_t *context = _gsm_context();
+    return context->sim_is_insert;
 }
 
 int8_t gprs_is_attach()
 {
-    return g_context.gprs_is_attach;
+    sim300_context_t *context = _gsm_context();
+    return context->gprs_is_attach;
 }
 
 sim_cip_state_t current_connection_status()
 {
-    return g_context.cip_state;
+    sim300_context_t *context = _gsm_context();
+    return context->cip_state;
 }
 
 uint8_t sim_cip_mux_mode()
 {
-    return g_context.mux;
+    sim300_context_t *context = _gsm_context();
+    return context->mux;
 }
