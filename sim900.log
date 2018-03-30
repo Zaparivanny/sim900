@@ -1,0 +1,15 @@
+Log list
+VARIANT 1 PDP DEACT
+
+AT\r\n\r\n
+OK\r\n
+AT+CIPSHUT\r\n\r\n
+SHUT OK\r\n
+AT+CIPMUX=1\r\n\r\n
+OK\r\n
+AT+CSTT="internet.mts.ru","mts","mts"\r\n\r\n
+OK\r\n
+AT+CIICR\r\n\r\n
++PDP: DEACT\r\n\r\n
+ERROR\r\n
+

@@ -372,6 +372,13 @@ TEST(AutoTestSim900, SIM_AT_CIICR)
     EXPECT_STREQ(g_data, "AT+CIICR\r\n");
     simx_test_send("\r\nOK\r\n");
     EXPECT_EQ(reply.status, SIM300_OK);
+    
+    simx_bring_up_wireless_connection(&reply);
+    EXPECT_EQ(g_length, strlen("AT+CIICR\r\n"));
+    EXPECT_STREQ(g_data, "AT+CIICR\r\n");
+    simx_test_send("\r\n+PDP: DEACT\r\n\r\n");
+    simx_test_send("\r\nERROR\r\n");
+    EXPECT_EQ(reply.status, SIM300_ERROR);
 }
 
 TEST(AutoTestSim900, SIM_AT_CIFSR)
@@ -792,7 +799,8 @@ TEST(AutoTestSim900MSG, SIM_PDP_CALLBACK)
     
     simx_test_send("\r\n+PDP: DEACT\r\n");
     EXPECT_EQ(g_notification, SIMX_PDP_DEACT);
-    EXPECT_EQ(reply.status, SIM300_ERRFRAME);
+    EXPECT_EQ(simx_is_receive(), 1);
+    EXPECT_EQ(reply.status, SIM300_ERROR);
 }
 
 TEST(AutoTestSim900MSG, SIM_CPIN_NOT_READY_CALLBACK)
@@ -817,7 +825,8 @@ TEST(AutoTestSim900MSG, SIM_CPIN_NOT_READY_CALLBACK)
     EXPECT_EQ(g_notification, SIMX_CPIN_NOT_READY);
     simx_test_send("\r\n+PDP: DEACT\r\n");
     EXPECT_EQ(g_notification, SIMX_PDP_DEACT);
-    EXPECT_EQ(reply.status, SIM300_ERRFRAME);
+    EXPECT_EQ(reply.status, SIM300_ERROR);
+    EXPECT_EQ(simx_is_receive(), 1);
 }
 
 TEST(AutoTestSim900Timeout, SIM_TIMEOUT)
