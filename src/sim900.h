@@ -116,6 +116,7 @@ typedef enum
 9   PDP DEACT */
 typedef enum
 {
+    CIP_UNKNOWN        = -1,
     CIP_IP_INITIAL     = 0x0,
     CIP_IP_START       = 0x1,
     CIP_IP_CONFIG      = 0x2,
@@ -130,6 +131,7 @@ typedef enum
 
 typedef enum
 {
+    MUX_CIP_UNKNOWN        = -1,
     MUX_CIP_IP_INITIAL     = 0x0,
     MUX_CIP_IP_START       = 0x1,
     MUX_CIP_IP_CONFIG      = 0x2,

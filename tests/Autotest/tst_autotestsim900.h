@@ -334,6 +334,38 @@ TEST(AutoTestSim900, SIM_AT_CIPSTATUS)
     
     EXPECT_EQ(current_connection_status(), CIP_IP_STATUS);
     
+    
+    /*******************************************/
+    
+    
+    simx_current_connection_status(&reply, cipstatus, 8);
+    simx_test_send("\r\nOK\r\n");
+    EXPECT_EQ(reply.status, SIM300_OK);
+    simx_test_send("\r\nSTATE: IP PROCESSING\r\n\r\n");
+    simx_test_send("C: 0,0,\"UDP\",\"195.210.189.106\",\"123\",\"CONNECTED\"\r\n");
+    simx_test_send("C: 1,0,\"TCP\",\"85.153.14.164\",\"80\",\"CLOSED\"\r\n");
+    simx_test_send("C: 2,0,\"TCP\",\"85.153.14.164\",\"80\",\"CONNECTED\"\r\n");
+    simx_test_send("C: 3,,\"\",\"\",\"\",\"INITIAL\"\r\n");
+    simx_test_send("C: 4,,\"\",\"\",\"\",\"INITIAL\"\r\n");
+    simx_test_send("C: 5,,\"\",\"\",\"\",\"INITIAL\"\r\n");
+    simx_test_send("C: 6,,\"\",\"\",\"\",\"INITIAL\"\r\n");
+    simx_test_send("C: 7,,\"\",\"\",\"\",\"INITIAL\"\r\n");
+    
+    
+    EXPECT_EQ(cipstatus[0].n, 0);
+    EXPECT_EQ(cipstatus[0].bearer, 0);
+    EXPECT_EQ(cipstatus[0].mode, SIM_UDP);
+    EXPECT_EQ(cipstatus[0].port, 123);
+    EXPECT_EQ(cipstatus[0].state, CCP_CONNECTED);
+    
+    for(int i = 3; i < 7; i++)
+    {
+        EXPECT_EQ(cipstatus[i].n, i);
+        EXPECT_EQ(cipstatus[i].state, CCP_INITIAL);
+    }
+    
+    EXPECT_EQ(current_connection_status(), MUX_CIP_IP_PROCESSUNG);
+    
 }
 
 TEST(AutoTestSim900, SIM_AT_CIPMUX)

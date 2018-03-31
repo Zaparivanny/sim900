@@ -1346,39 +1346,64 @@ void _simx_current_connection_status_parse(sim300_context_t *context, char *buff
     }
 }
 
+sim_cip_state_t _simx_mux0_cipstate(uint8_t *buffer, uint16_t length)
+{
+    static const sim_cip_state_t cip_state[] = {CIP_IP_INITIAL,
+        CIP_IP_START, CIP_IP_CONFIG, CIP_IP_GPRSACT, CIP_IP_STATUS,
+        CIP_CONN_LISTENING, CIP_CONN_LISTENING, CIP_CONN_LISTENING,
+        CIP_CONNECT_OK, CIP_CLOSING, CIP_CLOSING, CIP_CLOSED, 
+        CIP_CLOSED, CIP_PDP_DEACT};
+    static const char *cipstate[] = {"IP INITIAL\0",
+        "IP START\0", "IP CONFIG\0", "IP GPRSACT\0", "IP STATUS\0",
+        "TCP CONNECTING\0", "UDP CONNECTING\0", "SERVER LISTENING\0", 
+        "CONNECT OK\0", "TCP CLOSING\0", "UDP CLOSING\0", "TCP CLOSED\0",
+        "UDP CLOSED\0", "PDP DEACT\0"};
+    
+    for(uint8_t i = 0; i < sizeof(cip_state) / sizeof(cip_state[0]); i++)
+    {
+        if(memcmp(buffer + 7, cipstate[i], strlen(cipstate[i])) == 0)
+        {
+            
+            return cip_state[i];
+        }
+    }
+    return MUX_CIP_UNKNOWN;
+}
+
+sim_mux_cip_state_t _simx_mux1_cipstate(uint8_t *buffer, uint16_t length)
+{
+    static const sim_mux_cip_state_t cip_state[] = {
+        MUX_CIP_IP_INITIAL, MUX_CIP_IP_START, MUX_CIP_IP_CONFIG, 
+    MUX_CIP_IP_GPRSACT, MUX_CIP_IP_STATUS, MUX_CIP_IP_PROCESSUNG, MUX_CIP_PDP_DEACT};
+    static const char *cipstate[] = {"IP INITIAL",
+        "IP START", "IP CONFIG", "IP GPRSACT", "IP STATUS",
+        "IP PROCESSING", "PDP DEACT"};
+    
+    for(uint8_t i = 0; i < sizeof(cip_state) / sizeof(cip_state[0]); i++)
+    {
+        if(memcmp(buffer + 7, cipstate[i], strlen(cipstate[i])) == 0)
+        {
+            
+            return cip_state[i];
+        }
+    }
+    return CIP_UNKNOWN;
+}
+
 void _simx_current_connection_status_resp(sim300_context_t *context, uint8_t *buffer, uint16_t length)
 {
     if(context->cmd == AT_CIPSTATUS)
     {
         if(memcmp(buffer, "STATE: ", 7) == 0)
         {
-            static const sim_cip_state_t cip_state[] = {CIP_IP_INITIAL,
-                CIP_IP_START, CIP_IP_CONFIG, CIP_IP_GPRSACT, CIP_IP_STATUS,
-                CIP_CONN_LISTENING, CIP_CONN_LISTENING, CIP_CONN_LISTENING,
-                CIP_CONNECT_OK, CIP_CLOSING, CIP_CLOSING, CIP_CLOSED, 
-                CIP_CLOSED, CIP_PDP_DEACT};
-            static const char *cipstate[] = {"IP INITIAL\0",
-                "IP START\0", "IP CONFIG\0", "IP GPRSACT\0", "IP STATUS\0",
-                "TCP CONNECTING\0", "UDP CONNECTING\0", "SERVER LISTENING\0", 
-                "CONNECT OK\0", "TCP CLOSING\0", "UDP CLOSING\0", "TCP CLOSED\0",
-                "UDP CLOSED\0", "PDP DEACT\0"};
-            
-            for(uint8_t i = 0; i < sizeof(cip_state) / sizeof(cip_state[0]); i++)
-            {
-                if(memcmp(buffer + 7, cipstate[i], strlen(cipstate[i])) == 0)
-                {
-                    context->cip_state = cip_state[i];
-                    if(context->mux == 0)
-                    {
-                        context->is_receive = 1;
-                    }
-                    return;
-                }
-            }
-            context->cip_state = (sim_cip_state_t) - 1;
             if(context->mux == 0)
             {
+                context->cip_state = _simx_mux0_cipstate(buffer, length);
                 context->is_receive = 1;
+            }
+            else
+            {
+                context->cip_state = _simx_mux1_cipstate(buffer, length);
             }
         }
         else
