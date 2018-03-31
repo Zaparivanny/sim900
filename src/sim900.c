@@ -61,6 +61,8 @@ void _strchrcpy(char *src, str_tocken_t *tocken, uint8_t size);
 uint8_t str_to_ip(char *strip, sim_ip_t *ip);
 sim_tcp_mode_t str_to_tcp_mode(uint8_t *str);
 uint8_t simx_check_message(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
+sim_cip_state_t _simx_mux0_cipstate(uint8_t *buffer, uint16_t length);
+sim_mux_cip_state_t _simx_mux1_cipstate(uint8_t *buffer, uint16_t length);
 
 void simx_rcv_rframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void simx_rcv_wframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
