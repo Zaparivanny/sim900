@@ -63,6 +63,7 @@ sim_tcp_mode_t str_to_tcp_mode(uint8_t *str);
 uint8_t simx_check_message(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 sim_cip_state_t _simx_mux0_cipstate(uint8_t *buffer, uint16_t length);
 sim_mux_cip_state_t _simx_mux1_cipstate(uint8_t *buffer, uint16_t length);
+void _simx_context_send_at_init(struct sim300_context_t *context);
 
 void simx_rcv_rframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
 void simx_rcv_wframe(struct sim300_context_t *context, uint8_t *buffer, uint16_t length);
@@ -880,14 +881,20 @@ void simx_wait_reply(sim_reply_t *reply)
     }
 }
 
+void _simx_context_send_at_init(sim300_context_t *context)
+{
+    memset(context->rx_buffer, 0, SIM_RX_BUFFER);
+    context->sim_cnt = 0;
+    context->time_ms = 0;
+    context->is_receive = 0;
+}
+
 void sim300_send_no_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_t cmd)
 {
     if(context->is_receive == 1)
     {
-        context->time_ms = 0;
+        _simx_context_send_at_init(context);
         fsimx_receive = simx_receive_msg;
-        context->sim_cnt = 0;
-        context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
@@ -905,10 +912,8 @@ void sim300_send_at_cmd(sim300_context_t *context, sim_reply_t *reply, simx_cmd_
 {
     if(context->is_receive == 1)
     {
-        context->time_ms = 0;
+        _simx_context_send_at_init(context);
         fsimx_receive = simx_receive_msg;
-        context->sim_cnt = 0;
-        context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
@@ -926,10 +931,8 @@ void sim300_send_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_cmd_
 {
     if(context->is_receive == 1)
     {
-        context->time_ms = 0;
+        _simx_context_send_at_init(context);
         fsimx_receive = simx_receive_msg;
-        context->sim_cnt = 0;
-        context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
@@ -957,10 +960,8 @@ void sim300_send_at_cmd_vp(sim300_context_t *context, sim_reply_t *reply, simx_c
 {
     if(context->is_receive == 1)
     {
-        context->time_ms = 0;
+        _simx_context_send_at_init(context);
         fsimx_receive = simx_receive_msg;
-        context->sim_cnt = 0;
-        context->is_receive = 0;
         context->state = AT_CMD_ST_RN;
         context->reply = reply;
         context->cmd = cmd;
